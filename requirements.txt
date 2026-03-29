@@ -1,6 +1,8 @@
-pandas
-openai
-psycopg
-python-dotenv
-instructor
 anthropic
+openai
+instructor
+pydantic
+pandas
+psycopg2-binary
+python-dotenv
+timescale-vector

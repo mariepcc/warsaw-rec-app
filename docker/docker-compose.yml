@@ -1,11 +1,11 @@
 name: timescaledb
-
 services:
   timescaledb:
-    image: timescale/timescaledb-ha:pg16
+    image: timescale/timescaledb-ha:pg17
     container_name: timescaledb
+    user: postgres
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=warsaw_places
       - POSTGRES_PASSWORD=password
     ports:
       - "5432:5432"
