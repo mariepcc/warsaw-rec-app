@@ -217,3 +217,22 @@ __marimo__/
 
 google_places
 notebooks
+
+# Lokalne pliki binarne i wtyczki
+.terraform/
+
+# Pliki stanu (State) - BARDZO WAŻNE: nie pushuj tego do Git!
+*.tfstate
+*.tfstate.*
+
+# Pliki zmiennych (często zawierają hasła/klucze)
+*.tfvars
+*.tfvars.json
+
+# Pliki logów i crashy
+*.log
+crash.log
+
+# Pliki zapasowe i tymczasowe
+.terraform.lock.hcl
+*.backup
