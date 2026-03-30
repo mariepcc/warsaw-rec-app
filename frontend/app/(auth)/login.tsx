@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { signIn } from "aws-amplify/auth";
+import { signIn, signOut } from "aws-amplify/auth";
 import { useAuthStore } from "@/store/auth/authStore";
 
 export default function LoginScreen() {
@@ -43,8 +43,10 @@ export default function LoginScreen() {
       if (isSignedIn) {
         setUser({ email });
         setAuthenticated(true);
+        router.replace("/(app)/chat");
       }
     } catch (err: any) {
+      console.error("Login error:", err);
       switch (err.name) {
         case "NotAuthorizedException":
           setError("Nieprawidłowy email lub hasło");
