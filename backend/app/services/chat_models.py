@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal
+from typing import Any, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +34,4 @@ class SynthesizedResponse(BaseModel):
         default_factory=list,
         description="Nazwy poleconych miejsc (do zapisu w historii)",
     )
+    _context: Any = None

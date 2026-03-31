@@ -72,6 +72,7 @@ class ChatService:
             context=context,
             results_limit=limit,
         )
+        response._context = context
 
         self.repo.save_message(
             session_id, "user", message, message_type=classification.message_type

@@ -1,3 +1,4 @@
+// app/(tabs)/chat.tsx  — pełny plik zastępuje poprzedni chat.tsx
 import { useState, useRef, useCallback } from "react";
 import {
   View,
@@ -9,16 +10,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { sendMessage } from "@/api/chat";
+import { Place } from "@/api/places";
+import { PlacesBottomSheet } from "@/components/places/PlacesBottomSheet";
 import uuid from "react-native-uuid";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  places?: Place[];
 };
+
+const ACCENT = "#66a494";
+const PURPLE = "#7C6FCD";
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
@@ -27,6 +35,9 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
   const flatListRef = useRef<FlatList>(null);
+
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetPlaces, setSheetPlaces] = useState<Place[]>([]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
@@ -51,6 +62,7 @@ export default function ChatScreen() {
           id: uuid.v4() as string,
           role: "assistant",
           content: response.answer,
+          places: response.places ?? [],
         },
       ]);
     } catch {
@@ -71,8 +83,15 @@ export default function ChatScreen() {
     }
   }, [input, loading, sessionId]);
 
+  function openSheet(places: Place[]) {
+    setSheetPlaces(places);
+    setSheetVisible(true);
+  }
+
   function renderMessage({ item }: { item: Message }) {
     const isUser = item.role === "user";
+    const hasPlaces = !isUser && item.places && item.places.length > 0;
+
     return (
       <View
         style={[
@@ -85,20 +104,30 @@ export default function ChatScreen() {
             <Text style={styles.avatarText}>W</Text>
           </View>
         )}
-        <View
-          style={[
-            styles.bubble,
-            isUser ? styles.bubbleUser : styles.bubbleAssistant,
-          ]}
-        >
-          <Text
+        <View style={styles.bubbleCol}>
+          <View
             style={[
-              styles.bubbleText,
-              isUser ? styles.textUser : styles.textAssistant,
+              styles.bubble,
+              isUser ? styles.bubbleUser : styles.bubbleAssistant,
             ]}
           >
-            {item.content}
-          </Text>
+            <Text
+              style={[
+                styles.bubbleText,
+                isUser ? styles.textUser : styles.textAssistant,
+              ]}
+            >
+              {item.content}
+            </Text>
+          </View>
+
+          {/* przycisk "Zobacz N miejsc" */}
+          {hasPlaces && (
+            <PlacesButton
+              count={item.places!.length}
+              onPress={() => openSheet(item.places!)}
+            />
+          )}
         </View>
       </View>
     );
@@ -151,7 +180,10 @@ export default function ChatScreen() {
         )}
 
         <View
-          style={[styles.inputWrapper, { paddingBottom: insets.bottom - 20 }]}
+          style={[
+            styles.inputWrapper,
+            { paddingBottom: Math.max(insets.bottom - 20, 8) },
+          ]}
         >
           <View style={styles.inputRow}>
             <TextInput
@@ -173,18 +205,91 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Bottom sheet — nad chatem, poza KeyboardAvoidingView */}
+      <PlacesBottomSheet
+        visible={sheetVisible}
+        places={sheetPlaces}
+        sessionId={sessionId}
+        onClose={() => setSheetVisible(false)}
+      />
     </View>
   );
 }
 
-const ACCENT = "#66a494";
+// ─── PlacesButton ─────────────────────────────────────────────────────────────
+
+function PlacesButton({
+  count,
+  onPress,
+}: {
+  count: number;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function handlePressIn() {
+    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
+  }
+  function handlePressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+  }
+
+  return (
+    <Animated.View
+      style={{ transform: [{ scale }], alignSelf: "flex-start", marginTop: 6 }}
+    >
+      <TouchableOpacity
+        style={btnStyles.btn}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <Text style={btnStyles.icon}>📍</Text>
+        <Text style={btnStyles.text}>
+          Zobacz {count}{" "}
+          {count === 1 ? "miejsce" : count < 5 ? "miejsca" : "miejsc"}
+        </Text>
+        <Text style={btnStyles.arrow}>›</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const btnStyles = StyleSheet.create({
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: PURPLE,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    shadowColor: PURPLE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  icon: { fontSize: 14 },
+  text: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+  arrow: {
+    color: "#ffffffcc",
+    fontSize: 18,
+    fontWeight: "300",
+    lineHeight: 18,
+  },
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: {
-    flex: 1,
-    backgroundColor: "#FAFAFA",
-  },
+  container: { flex: 1, backgroundColor: "#FAFAFA" },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 14,
@@ -198,28 +303,19 @@ const styles = StyleSheet.create({
     color: "#111",
     letterSpacing: -0.3,
   },
-  headerSub: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 1,
-  },
-  list: {
-    padding: 16,
-    paddingBottom: 8,
-    gap: 12,
-    flexGrow: 1,
-  },
+  headerSub: { fontSize: 12, color: "#999", marginTop: 1 },
+  list: { padding: 16, paddingBottom: 8, gap: 12, flexGrow: 1 },
   messageRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 8,
   },
-  rowUser: {
-    justifyContent: "flex-end",
+  bubbleCol: {
+    flexDirection: "column",
+    maxWidth: "78%",
   },
-  rowAssistant: {
-    justifyContent: "flex-start",
-  },
+  rowUser: { justifyContent: "flex-end" },
+  rowAssistant: { justifyContent: "flex-start" },
   avatar: {
     width: 28,
     height: 28,
@@ -229,13 +325,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 2,
   },
-  avatarText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   bubble: {
-    maxWidth: "78%",
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -243,6 +334,7 @@ const styles = StyleSheet.create({
   bubbleUser: {
     backgroundColor: "#111",
     borderBottomRightRadius: 4,
+    alignSelf: "flex-end",
   },
   bubbleAssistant: {
     backgroundColor: "#fff",
@@ -250,10 +342,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "#E8E8E8",
   },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
+  bubbleText: { fontSize: 15, lineHeight: 22 },
   textUser: { color: "#fff" },
   textAssistant: { color: "#111" },
   typingRow: {
@@ -289,16 +378,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  emptyIconText: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111",
-  },
+  emptyIconText: { color: "#fff", fontSize: 22, fontWeight: "700" },
+  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
   emptySubtitle: {
     fontSize: 14,
     color: "#888",
@@ -311,7 +392,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#EBEBEB",
     paddingHorizontal: 16,
     paddingTop: 12,
-    justifyContent: "center",
   },
   inputRow: {
     flexDirection: "row",
@@ -338,9 +418,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendBtnDisabled: {
-    backgroundColor: "#CCC",
-  },
+  sendBtnDisabled: { backgroundColor: "#CCC" },
   sendBtnText: {
     color: "#fff",
     fontSize: 18,

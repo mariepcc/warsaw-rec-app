@@ -1,10 +1,9 @@
 import datetime
 import uuid
 from fastapi import APIRouter, HTTPException
-from schemas.session import SessionResponse, MessageResponse
+from schemas.session import MessageResponse
 from database.chat_repository import ChatRepository
 from config.settings import get_settings
-import os
 
 router = APIRouter()
 settings = get_settings()

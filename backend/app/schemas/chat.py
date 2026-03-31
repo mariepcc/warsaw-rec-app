@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from schemas.places import PlaceResponse
 
 
 class ChatRequest(BaseModel):
@@ -10,5 +11,5 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
-    recommended_places: list[str] = []
+    places: list[PlaceResponse] = []
     enough_context: bool
