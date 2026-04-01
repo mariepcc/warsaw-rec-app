@@ -1,5 +1,5 @@
 from typing import List
-from services.chat_models import ChatMessage, ClassificationResult
+from schemas.chat import ChatMessage, ClassificationResult
 from services.llm_factory import LLMFactory
 
 

@@ -1,6 +1,6 @@
 from typing import List, Optional
 import pandas as pd
-from services.chat_models import ChatMessage, SynthesizedResponse
+from schemas.chat import ChatMessage, SynthesizedResponse
 from services.llm_factory import LLMFactory
 
 

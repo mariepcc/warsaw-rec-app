@@ -10,6 +10,7 @@ export type Place = {
   main_category?: string;
   sub_category?: string;
   opening_hours?: string;
+  website?: string;
   maps_url?: string;
   menu_url?: string;
   serves_vegetarian?: boolean;

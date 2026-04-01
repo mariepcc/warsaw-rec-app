@@ -1,18 +1,21 @@
 import pandas as pd
+from schemas.places import PlaceResponse
+from schemas.chat import SynthesizedResponse
 from config.settings import get_settings
 from database.vector_store import VectorStore
 from database.chat_repository import ChatRepository
+from database.places_repository import PlacesRepository
 from services.message_classifier import MessageClassifier
 from services.metadata_extractor import MetadataExtractor
 from services.synthesizer import Synthesizer
-from services.chat_models import SynthesizedResponse
 
 
 class ChatService:
     def __init__(self):
         self.settings = get_settings()
         self.vec = VectorStore()
-        self.repo = ChatRepository(self.settings.database.service_url)
+        self.chat_repo = ChatRepository(self.settings.database.service_url)
+        self.places_repo = PlacesRepository(self.settings.database.service_url)
 
     def handle_message(
         self,
@@ -20,8 +23,8 @@ class ChatService:
         session_id: str,
         message: str,
     ) -> SynthesizedResponse:
-        self.repo.get_or_create_session(user_id, session_id)
-        history = self.repo.get_history(session_id)
+        self.chat_repo.get_or_create_session(user_id, session_id)
+        history = self.chat_repo.get_history(session_id)
         classification = MessageClassifier.classify(message, history)
 
         context = None
@@ -46,7 +49,7 @@ class ChatService:
 
             context = self.vec.search(expanded_query, **search_kwargs)
             if context is not None and not context.empty:
-                self.repo.save_session_context(
+                self.chat_repo.save_session_context(
                     session_id,
                     context.to_json(orient="records", force_ascii=False),
                 )
@@ -57,7 +60,7 @@ class ChatService:
 
         elif classification.message_type == "followup":
             print(f"Szukam w sesji: {session_id}")
-            context_json = self.repo.get_session_context(session_id)
+            context_json = self.chat_repo.get_session_context(session_id)
             if context_json:
                 import io
 
@@ -74,10 +77,56 @@ class ChatService:
         )
         response._context = context
 
-        self.repo.save_message(
+        if response.recommended_place_names and context is not None:
+            recommended = set(response.recommended_place_names)
+            filtered_df = context[context["name"].isin(recommended)]
+            places_to_save = []
+            for _, row in filtered_df.iterrows():
+                places_to_save.append(
+                    PlaceResponse(
+                        name=row.get("name", ""),
+                        address=row.get("address"),
+                        district=row.get("district"),
+                        rating=row.get("rating"),
+                        price_level=row.get("price_level"),
+                        maps_url=row.get("maps_url"),
+                        menu_url=row.get("menu_url"),
+                        main_category=row.get("main_category"),
+                        sub_category=row.get("sub_category"),
+                        opening_hours=row.get("opening_hours"),
+                        serves_vegetarian=row.get("serves_vegetarian"),
+                        serves_coffee=row.get("serves_coffee"),
+                        serves_beer=row.get("serves_beer"),
+                        serves_wine=row.get("serves_wine"),
+                        serves_cocktails=row.get("serves_cocktails"),
+                        serves_breakfast=row.get("serves_breakfast"),
+                        serves_lunch=row.get("serves_lunch"),
+                        serves_dinner=row.get("serves_dinner"),
+                        serves_dessert=row.get("serves_dessert"),
+                        outdoor_seating=row.get("outdoor_seating"),
+                        live_music=row.get("live_music"),
+                        good_for_groups=row.get("good_for_groups"),
+                        menu_for_children=row.get("menu_for_children"),
+                        takeout=row.get("takeout"),
+                        dine_in=row.get("dine_in"),
+                        reservable=row.get("reservable"),
+                        lat=row.get("lat"),
+                        lon=row.get("lon"),
+                        google_maps_direct_link=row.get("google_maps_direct_link"),
+                        price_range_end=row.get("price_range_end"),
+                        price_range_start=row.get("price_range_start"),
+                    )
+                )
+            self.places_repo.save_places(
+                user_id,
+                places_to_save,
+                session_id,
+            )
+
+        self.chat_repo.save_message(
             session_id, "user", message, message_type=classification.message_type
         )
-        self.repo.save_message(
+        self.chat_repo.save_message(
             session_id,
             "assistant",
             response.answer,

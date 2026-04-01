@@ -15,6 +15,7 @@ class PlaceResponse(BaseModel):
     main_category: Optional[str] = None
     sub_category: Optional[str] = None
     opening_hours: Optional[str] = None
+    website: Optional[str] = None
     maps_url: Optional[str] = None
     menu_url: Optional[str] = None
     serves_vegetarian: Optional[bool] = None
@@ -63,6 +64,7 @@ class SavedPlaceResponse(BaseModel):
     main_category: Optional[str] = None
     sub_category: Optional[str] = None
     opening_hours: Optional[str] = None
+    website: Optional[str] = None
     maps_url: Optional[str] = None
     menu_url: Optional[str] = None
     serves_vegetarian: Optional[bool] = None

@@ -1,7 +1,7 @@
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from services.chat_models import ChatMessage
+from schemas.chat import ChatMessage
 
 
 CREATE_TABLES_SQL = """
