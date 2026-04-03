@@ -1,4 +1,3 @@
-// app/(tabs)/chat.tsx  — pełny plik zastępuje poprzedni chat.tsx
 import { useState, useRef, useCallback } from "react";
 import {
   View,

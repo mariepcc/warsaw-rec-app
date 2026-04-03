@@ -1,5 +1,5 @@
 import math
-
+from uuid import UUID
 from pydantic import BaseModel, field_validator
 from typing import Any, Optional
 from datetime import datetime
@@ -54,7 +54,7 @@ class SavePlaceRequest(BaseModel):
 
 
 class SavedPlaceResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     address: Optional[str] = None
     district: Optional[str] = None

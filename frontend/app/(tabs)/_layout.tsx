@@ -48,12 +48,18 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="saved"
+        name="saved/index"
         options={{
           title: "Zapisane",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bookmark-outline" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="saved/[name]/index"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen

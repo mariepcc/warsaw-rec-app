@@ -43,7 +43,7 @@ async def get_saved_places(
     return places
 
 
-@router.get("/saved/{place_name}/check")
+@router.get("/get_place/{place_name}")
 async def check_saved(
     place_name: str,
     user: dict = Depends(get_current_user),

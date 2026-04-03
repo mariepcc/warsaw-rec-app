@@ -43,7 +43,7 @@ export default function LoginScreen() {
       if (isSignedIn) {
         setUser({ email });
         setAuthenticated(true);
-        router.replace("/(app)/chat");
+        router.replace("/(tabs)/chat");
       }
     } catch (err: any) {
       console.error("Login error:", err);

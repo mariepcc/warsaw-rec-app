@@ -25,7 +25,7 @@ export default function Index() {
   if (isLoading) return null;
 
   if (isAuthenticated) {
-    return <Redirect href="/(app)/chat" />;
+    return <Redirect href="/(tabs)/chat" />;
   }
 
   return <Redirect href="/(auth)/login" />;
