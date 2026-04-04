@@ -3,6 +3,7 @@ import { Place } from "./places";
 
 export type ChatResponse = {
   answer: string;
+  type: string;
   session_id: string;
   places: Place[];
 };

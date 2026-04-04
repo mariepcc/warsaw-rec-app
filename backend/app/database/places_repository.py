@@ -2,17 +2,18 @@ import json
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from schemas.places import PlaceResponse
+from schemas.places import PlaceResponse, SavedPlaceResponse
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS saved_places (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id            TEXT PRIMARY KEY,
     user_id       TEXT NOT NULL,
     session_id    TEXT,
     name          TEXT NOT NULL,
     address       TEXT,
     district      TEXT,
     rating        FLOAT,
+    user_rating_count FLOAT,
     price_level   TEXT,
     website       TEXT,
     maps_url      TEXT,
@@ -77,20 +78,22 @@ class PlacesRepository:
                     cur.execute(
                         """
                         INSERT INTO saved_places
-                            (user_id, session_id, name, address, district,
-                            rating, price_level, website, maps_url, menu_url, main_category,
+                            (id, user_id, session_id, name, address, district,
+                            rating, user_rating_count, price_level, website, maps_url, menu_url, main_category,
                             sub_category, metadata)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (user_id, name) DO NOTHING
                         RETURNING id
                         """,
                         (
+                            place.id,
                             user_id,
                             session_id,
                             place.name,
                             place.address,
                             place.district,
                             place.rating,
+                            place.user_rating_count,
                             place.price_level,
                             place.website,
                             place.maps_url,
@@ -101,16 +104,16 @@ class PlacesRepository:
                         ),
                     )
 
-    def delete_place(self, user_id: str, place_name: str) -> bool:
+    def delete_place(self, user_id: str, place_id: str) -> bool:
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     DELETE FROM saved_places
-                    WHERE user_id = %s AND name = %s
+                    WHERE user_id = %s AND id = %s
                     RETURNING id
                     """,
-                    (user_id, place_name),
+                    (user_id, place_id),
                 )
                 return cur.fetchone() is not None
 
@@ -118,11 +121,52 @@ class PlacesRepository:
         self,
         user_id: str,
         category: Optional[str] = None,
-    ) -> List[dict]:
+    ) -> List[SavedPlaceResponse]:
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 query = """
-                    SELECT * FROM saved_places
+                    SELECT 
+                        id::text,
+                        user_id,
+                        session_id,
+                        name,
+                        address,
+                        district,
+                        rating,
+                        user_rating_count,
+                        price_level,
+                        website,
+                        maps_url,
+                        menu_url,
+                        main_category,
+                        sub_category,
+                        is_favourite,
+                        created_at,
+                        metadata->>'opening_hours' as opening_hours,
+                        metadata->>'website' as website,
+                        metadata->>'google_maps_direct_link' as google_maps_direct_link,
+                        metadata->>'menu_url' as menu_url,
+                        (metadata->>'lat')::float as lat,
+                        (metadata->>'lon')::float as lon,
+                        (metadata->>'price_range_start')::float as price_range_start,
+                        (metadata->>'price_range_end')::float as price_range_end,
+                        (metadata->>'serves_vegetarian')::boolean as serves_vegetarian,
+                        (metadata->>'serves_coffee')::boolean as serves_coffee,
+                        (metadata->>'serves_beer')::boolean as serves_beer,
+                        (metadata->>'serves_wine')::boolean as serves_wine,
+                        (metadata->>'serves_cocktails')::boolean as serves_cocktails,
+                        (metadata->>'serves_breakfast')::boolean as serves_breakfast,
+                        (metadata->>'serves_lunch')::boolean as serves_lunch,
+                        (metadata->>'serves_dinner')::boolean as serves_dinner,
+                        (metadata->>'serves_dessert')::boolean as serves_dessert,
+                        (metadata->>'outdoor_seating')::boolean as outdoor_seating,
+                        (metadata->>'live_music')::boolean as live_music,
+                        (metadata->>'good_for_groups')::boolean as good_for_groups,
+                        (metadata->>'menu_for_children')::boolean as menu_for_children,
+                        (metadata->>'reservable')::boolean as reservable,
+                        (metadata->>'dine_in')::boolean as dine_in,
+                        (metadata->>'takeout')::boolean as takeout
+                    FROM saved_places
                     WHERE user_id = %s
                 """
                 params = [user_id]
@@ -131,45 +175,34 @@ class PlacesRepository:
                     params.append(category)
                 query += " ORDER BY created_at DESC"
                 cur.execute(query, params)
-                return cur.fetchall()
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
 
-    def is_saved(self, user_id: str, place_name: str) -> bool:
-        with self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT 1 FROM saved_places
-                    WHERE user_id = %s AND name = %s
-                    """,
-                    (user_id, place_name),
-                )
-                return cur.fetchone() is not None
-
-    def mark_as_favourite(self, user_id: str, place_name: str) -> bool:
+    def mark_as_favourite(self, user_id: str, place_id: str) -> bool:
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     UPDATE saved_places
                     SET is_favourite = NOT is_favourite
-                    WHERE user_id = %s AND name = %s
+                    WHERE user_id = %s AND id = %s
                     RETURNING is_favourite
                     """,
-                    (user_id, place_name),
+                    (user_id, place_id),
                 )
                 row = cur.fetchone()
         return row[0]
 
-    def is_favourite(self, user_id: str, place_name: str) -> bool:
+    def is_favourite(self, user_id: str, place_id: str) -> bool:
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                 SELECT is_favourite
                 FROM saved_places
-                WHERE user_id = %s AND name = %s
+                WHERE user_id = %s AND id = %s
                 """,
-                    (user_id, place_name),
+                    (user_id, place_id),
                 )
-            row = cur.fetchone()
-        return bool(row[0])
+                row = cur.fetchone()
+                return bool(row[0])

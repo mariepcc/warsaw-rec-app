@@ -1,6 +1,7 @@
 import apiClient from "./client";
 
 export type Place = {
+  id: string;
   name: string;
   address?: string;
   district?: string;
@@ -34,15 +35,10 @@ export type Place = {
   price_range_start?: number;
   price_range_end?: number;
   google_maps_direct_link?: string;
+  session_id?: string;
+  saved_at?: string;
+  is_favourite?: boolean;
 };
-
-export async function savePlace(place: Place, sessionId?: string) {
-  const response = await apiClient.post("/places/save", {
-    place,
-    session_id: sessionId,
-  });
-  return response.data;
-}
 
 export async function unsavePlace(placeName: string) {
   const response = await apiClient.delete(

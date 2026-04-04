@@ -71,12 +71,11 @@ function InfoRow({
   );
 }
 
-// ── ekran ─────────────────────────────────────────────────────────────────────
-
 export default function PlaceDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data } = useLocalSearchParams<{ place: string; data: string }>();
+  console.log("PlaceDetailScreen params:", { data });
 
   const place: Place | null = React.useMemo(() => {
     try {
@@ -86,11 +85,7 @@ export default function PlaceDetailScreen() {
     }
   }, [data]);
 
-  const {
-    isFav,
-    loading: favLoading,
-    toggle,
-  } = useFavourite(place?.name ?? "");
+  const { isFav, loading: favLoading, toggle } = useFavourite(place?.id ?? "");
 
   if (!place) {
     return (

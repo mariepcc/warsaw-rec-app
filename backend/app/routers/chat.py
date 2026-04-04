@@ -36,7 +36,8 @@ async def send_message(
             for _, row in filtered.iterrows():
                 places.append(
                     PlaceResponse(
-                        name=row.get("name", ""),
+                        id=row.get("id"),
+                        name=row.get("name"),
                         address=row.get("address"),
                         district=row.get("district"),
                         rating=row.get("rating"),
@@ -68,10 +69,11 @@ async def send_message(
 
         return ChatResponse(
             answer=response.answer,
+            type=response.type,
             session_id=session_id,
             places=places,
             enough_context=response.enough_context,
         )
     except Exception as e:
-        traceback.print_exc()
+        traceback.print_exc(e)
         raise

@@ -7,13 +7,13 @@ type UseFavouriteReturn = {
   toggle: () => Promise<void>;
 };
 
-export function useFavourite(placeName: string): UseFavouriteReturn {
+export function useFavourite(placeId: string): UseFavouriteReturn {
   const [isFav, setIsFav] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    isFavourite(placeName)
+    isFavourite(placeId)
       .then((val) => {
         if (!cancelled) setIsFav(val);
       })
@@ -24,19 +24,19 @@ export function useFavourite(placeName: string): UseFavouriteReturn {
     return () => {
       cancelled = true;
     };
-  }, [placeName]);
+  }, [placeId]);
 
   const toggle = useCallback(async () => {
     const previous = isFav;
     setIsFav((v) => !v);
 
     try {
-      const next = await toggleFavourite(placeName);
+      const next = await toggleFavourite(placeId);
       setIsFav(next);
     } catch {
       setIsFav(previous);
     }
-  }, [placeName, isFav]);
+  }, [placeId, isFav]);
 
   return { isFav, loading, toggle };
 }

@@ -6,6 +6,8 @@ from typing import Optional
 class SessionResponse(BaseModel):
     id: str
     created_at: datetime
+    first_message: Optional[str] = None
+    message_count: int = 0
 
 
 class MessageResponse(BaseModel):

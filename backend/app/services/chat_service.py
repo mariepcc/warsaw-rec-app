@@ -23,7 +23,7 @@ class ChatService:
         session_id: str,
         message: str,
     ) -> SynthesizedResponse:
-        self.chat_repo.get_or_create_session(user_id, session_id)
+        self.chat_repo.create_session(user_id, session_id)
         history = self.chat_repo.get_history(session_id)
         classification = MessageClassifier.classify(message, history)
 
@@ -67,7 +67,6 @@ class ChatService:
                 context = pd.read_json(io.StringIO(context_json), orient="records")
         limit = extraction.results_limit if extraction else 5
         print(f"Number of results to search for: {limit}")
-        print(f"Chat history: {history}")
 
         response = Synthesizer.generate_response(
             question=message,
@@ -76,6 +75,7 @@ class ChatService:
             results_limit=limit,
         )
         response._context = context
+        response.type = classification.message_type
 
         if response.recommended_place_names and context is not None:
             recommended = set(response.recommended_place_names)
@@ -84,10 +84,12 @@ class ChatService:
             for _, row in filtered_df.iterrows():
                 places_to_save.append(
                     PlaceResponse(
-                        name=row.get("name", ""),
+                        id=row.get("id"),
+                        name=row.get("name"),
                         address=row.get("address"),
                         district=row.get("district"),
                         rating=row.get("rating"),
+                        user_rating_count=row.get("user_rating_count"),
                         price_level=row.get("price_level"),
                         maps_url=row.get("maps_url"),
                         menu_url=row.get("menu_url"),

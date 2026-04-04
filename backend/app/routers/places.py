@@ -23,12 +23,12 @@ async def save_place(
     return {"saved": saved}
 
 
-@router.delete("/delete/{place_name}")
+@router.delete("/delete/{place_id}")
 async def unsave_place(
-    place_name: str,
+    place_id: str,
     user: dict = Depends(get_current_user),
 ):
-    deleted = places_repo.delete_place(user["user_id"], place_name)
+    deleted = places_repo.delete_place(user["user_id"], place_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Place not found")
     return {"deleted": True}
@@ -43,30 +43,21 @@ async def get_saved_places(
     return places
 
 
-@router.get("/get_place/{place_name}")
-async def check_saved(
-    place_name: str,
-    user: dict = Depends(get_current_user),
-):
-    is_saved = places_repo.is_saved(user["user_id"], place_name)
-    return {"is_saved": is_saved}
-
-
-@router.get("/{place_name}/is-favourite")
+@router.get("/{place_id}/is-favourite")
 async def is_favourite(
-    place_name: str,
+    place_id: str,
     user: dict = Depends(get_current_user),
 ):
     """Zwraca czy dane miejsce jest oznaczone jako ulubione przez usera."""
-    result = places_repo.is_favourite(user["user_id"], place_name)
+    result = places_repo.is_favourite(user["user_id"], place_id)
     return {"favourite": result}
 
 
-@router.post("/{place_name}/favourite")
+@router.post("/{place_id}/favourite")
 async def toggle_favourite(
-    place_name: str,
+    place_id: str,
     user: dict = Depends(get_current_user),
 ):
-    toggled = places_repo.mark_as_favourite(user["user_id"], place_name)
+    toggled = places_repo.mark_as_favourite(user["user_id"], place_id)
 
     return {"favourite": toggled}

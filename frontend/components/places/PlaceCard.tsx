@@ -3,26 +3,34 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Linking,
   StyleSheet,
   Animated,
+  useColorScheme,
 } from "react-native";
 import { Place } from "@/api/places";
 import { useFavourite } from "@/hooks/useFavourite";
 
-const ACCENT = "#66a494";
+const CATEGORY_COLORS: Record<string, string> = {
+  Gastronomia: "#E8A87C",
+  "Kawa i Słodycze": "#B8D4A8",
+  "Kultura & Rozrywka": "#A8C4D4",
+  "Natura & Rekreacja": "#C4D4A8",
+};
+
+const CATEGORY_INITIALS: Record<string, string> = {
+  Gastronomia: "GA",
+  "Kawa i Słodycze": "KS",
+  "Kultura & Rozrywka": "KR",
+  "Natura & Rekreacja": "NR",
+};
 
 const TAG_ICONS: Partial<Record<keyof Place, string>> = {
   serves_vegetarian: "🌿",
   outdoor_seating: "☀️",
   serves_coffee: "☕",
-  serves_breakfast: "🍳",
-  serves_lunch: "🥗",
-  serves_dinner: "🍽️",
   live_music: "🎵",
   good_for_groups: "👥",
   reservable: "📅",
-  dine_in: "🪑",
   takeout: "🛍️",
 };
 
@@ -33,31 +41,20 @@ function getTags(place: Place): string[] {
     .slice(0, 4);
 }
 
-function StarRating({ rating }: { rating?: number }) {
-  if (!rating) return null;
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5;
-  return (
-    <View style={s.stars}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Text key={i} style={s.star}>
-          {i < full ? "★" : i === full && half ? "½" : "☆"}
-        </Text>
-      ))}
-      <Text style={s.ratingNum}>{rating.toFixed(1)}</Text>
-    </View>
-  );
-}
-
 type Props = {
   place: Place;
   onPress?: () => void;
 };
 
 export function PlaceCard({ place, onPress }: Props) {
-  const { isFav, loading, toggle } = useFavourite(place.name);
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+  const { isFav, loading, toggle } = useFavourite(place.id);
   const heartScale = useRef(new Animated.Value(1)).current;
   const tags = getTags(place);
+
+  const bgColor = CATEGORY_COLORS[place.main_category ?? ""] ?? "#D4C4B8";
+  const initials = CATEGORY_INITIALS[place.main_category ?? ""] ?? "WW";
 
   function handleHeart() {
     Animated.sequence([
@@ -76,167 +73,146 @@ export function PlaceCard({ place, onPress }: Props) {
   }
 
   return (
-    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.85}>
-      {place.main_category && (
-        <View style={s.badge}>
-          <Text style={s.badgeText}>{place.main_category}</Text>
-        </View>
-      )}
-
-      {!loading && (
-        <TouchableOpacity
-          style={s.heartBtn}
-          onPress={handleHeart}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Animated.Text
-            style={[s.heart, { transform: [{ scale: heartScale }] }]}
+    <TouchableOpacity
+      style={[s.card, isDark && s.cardDark]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      {/* kolorowe tło z inicjałami zamiast zdjęcia */}
+      <View style={[s.imagePlaceholder, { backgroundColor: bgColor }]}>
+        <Text style={s.initials}>{initials}</Text>
+        {place.sub_category && (
+          <View style={s.subBadge}>
+            <Text style={s.subBadgeText}>{place.sub_category}</Text>
+          </View>
+        )}
+        {/* serce na tle */}
+        {!loading && (
+          <TouchableOpacity
+            style={s.heartBtn}
+            onPress={handleHeart}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            {isFav ? "❤️" : "🤍"}
-          </Animated.Text>
-        </TouchableOpacity>
-      )}
-
-      <Text style={s.name} numberOfLines={2}>
-        {place.name}
-      </Text>
-
-      {place.address && (
-        <Text style={s.address} numberOfLines={1}>
-          📍 {place.address}
-        </Text>
-      )}
-
-      <View style={s.row}>
-        <StarRating rating={place.rating} />
-        {place.user_rating_count != null && (
-          <Text style={s.reviewCount}>({place.user_rating_count})</Text>
+            <Animated.Text
+              style={[s.heart, { transform: [{ scale: heartScale }] }]}
+            >
+              {isFav ? "❤️" : "🤍"}
+            </Animated.Text>
+          </TouchableOpacity>
         )}
       </View>
 
-      {place.price_level && <Text style={s.price}>{place.price_level}</Text>}
+      {/* treść karty */}
+      <View style={[s.body, isDark && s.bodyDark]}>
+        <Text style={[s.name, isDark && s.nameDark]} numberOfLines={1}>
+          {place.name}
+        </Text>
 
-      {tags.length > 0 && (
-        <View style={s.tags}>
-          {tags.map((icon, i) => (
-            <View key={i} style={s.tag}>
-              <Text style={s.tagText}>{icon}</Text>
-            </View>
-          ))}
+        {place.address && (
+          <Text style={s.address} numberOfLines={1}>
+            {place.address}
+          </Text>
+        )}
+
+        <View style={s.metaRow}>
+          {place.rating != null && (
+            <Text style={s.rating}>★ {place.rating.toFixed(1)}</Text>
+          )}
+          {place.user_rating_count != null && (
+            <Text style={s.reviewCount}>({place.user_rating_count})</Text>
+          )}
+          {place.district && <Text style={s.district}>· {place.district}</Text>}
         </View>
-      )}
 
-      {place.google_maps_direct_link && (
-        <TouchableOpacity
-          style={s.mapsBtn}
-          onPress={() => Linking.openURL(place.google_maps_direct_link!)}
-        >
-          <Text style={s.mapsBtnText}>Otwórz w Maps →</Text>
-        </TouchableOpacity>
-      )}
+        {tags.length > 0 && (
+          <View style={s.tags}>
+            {tags.map((icon, i) => (
+              <View key={i} style={[s.tag, isDark && s.tagDark]}>
+                <Text style={s.tagText}>{icon}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
   card: {
-    width: 220,
+    width: 200,
+    borderRadius: 16,
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 16,
-    marginHorizontal: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    gap: 6,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "#E0E0E0",
+    marginRight: 12,
   },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: ACCENT + "22",
+  cardDark: {
+    backgroundColor: "#1E1E1E",
+    borderColor: "#333",
+  },
+  imagePlaceholder: {
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  initials: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "rgba(255,255,255,0.55)",
+    letterSpacing: 2,
+  },
+  subBadge: {
+    position: "absolute",
+    bottom: 8,
+    left: 8,
+    backgroundColor: "rgba(0,0,0,0.3)",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  badgeText: {
-    fontSize: 11,
-    color: ACCENT,
+  subBadgeText: {
+    color: "#fff",
+    fontSize: 10,
     fontWeight: "600",
   },
   heartBtn: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 8,
+    right: 8,
   },
-  heart: {
-    fontSize: 22,
+  heart: { fontSize: 20 },
+  body: {
+    padding: 12,
+    gap: 4,
+    backgroundColor: "#fff",
   },
+  bodyDark: { backgroundColor: "#1E1E1E" },
   name: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "#111",
-    lineHeight: 20,
-    paddingRight: 28,
+    letterSpacing: -0.2,
   },
-  address: {
-    fontSize: 12,
-    color: "#888",
-  },
-  row: {
+  nameDark: { color: "#F0F0F0" },
+  address: { fontSize: 12, color: "#888" },
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  stars: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 1,
-  },
-  star: {
-    fontSize: 12,
-    color: "#F5A623",
-  },
-  ratingNum: {
-    fontSize: 12,
-    color: "#555",
-    marginLeft: 3,
-    fontWeight: "600",
-  },
-  reviewCount: {
-    fontSize: 11,
-    color: "#aaa",
-  },
-  price: {
-    fontSize: 12,
-    color: "#555",
-    fontWeight: "600",
-  },
-  tags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 4,
     marginTop: 2,
   },
+  rating: { fontSize: 12, color: "#F5A623", fontWeight: "600" },
+  reviewCount: { fontSize: 11, color: "#bbb" },
+  district: { fontSize: 11, color: "#aaa" },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
   tag: {
     backgroundColor: "#F5F5F5",
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  tagText: {
-    fontSize: 13,
-  },
-  mapsBtn: {
-    marginTop: 8,
-    backgroundColor: ACCENT,
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  mapsBtnText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  tagDark: { backgroundColor: "#2A2A2A" },
+  tagText: { fontSize: 12 },
 });

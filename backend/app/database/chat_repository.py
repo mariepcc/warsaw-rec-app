@@ -46,7 +46,7 @@ class ChatRepository:
             with conn.cursor() as cur:
                 cur.execute(CREATE_TABLES_SQL)
 
-    def get_or_create_session(self, user_id: str, session_id: str) -> None:
+    def create_session(self, user_id: str, session_id: str) -> None:
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -57,6 +57,36 @@ class ChatRepository:
                     """,
                     (session_id, user_id),
                 )
+
+    def get_sessions(self, user_id: str) -> List[dict]:
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        s.id,
+                        s.created_at,
+                        (
+                            SELECT content 
+                            FROM chat_messages 
+                            WHERE session_id = s.id 
+                            AND role = 'user'
+                            ORDER BY created_at ASC 
+                            LIMIT 1
+                        ) as first_message,
+                        (
+                            SELECT COUNT(*) 
+                            FROM chat_messages 
+                            WHERE session_id = s.id
+                        ) as message_count
+                    FROM chat_sessions s
+                    WHERE s.user_id = %s::text
+                    ORDER BY s.created_at DESC
+                    """,
+                    (user_id,),
+                )
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
 
     def save_message(
         self,
@@ -90,8 +120,8 @@ class ChatRepository:
                     """
                     SELECT role, content
                     FROM chat_messages
-                    WHERE session_id = %s
-                    ORDER BY created_at DESC
+                    WHERE session_id = %s::text
+                    ORDER BY created_at ASC
                     LIMIT %s
                     """,
                     (session_id, limit),

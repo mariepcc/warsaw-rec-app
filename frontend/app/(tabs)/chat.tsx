@@ -9,12 +9,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ScrollView,
   Animated,
+  Modal,
+  useColorScheme,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { sendMessage } from "@/api/chat";
+import { getSessions, getSessionMessages } from "@/api/sessions";
+import type { Session } from "@/api/sessions";
 import { Place } from "@/api/places";
-import { PlacesBottomSheet } from "@/components/places/PlacesBottomSheet";
+import { PlaceCard } from "@/components/places/PlaceCard";
 import uuid from "react-native-uuid";
 
 type Message = {
@@ -22,33 +29,75 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   places?: Place[];
+  isFollowup?: boolean;
 };
 
 const ACCENT = "#66a494";
-const PURPLE = "#7C6FCD";
+const PRIMARY_GRADIENT = ["#1a2421", "#0f1614", "#0a0a0a"] as const;
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const scheme = useColorScheme();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
-  const flatListRef = useRef<FlatList>(null);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const [sheetPlaces, setSheetPlaces] = useState<Place[]>([]);
+  const flatListRef = useRef<FlatList>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const animatedOverlayOpacity = scrollY.interpolate({
+    inputRange: [0, 500, 1000],
+    outputRange: [0, 0.4, 0.8],
+    extrapolate: "clamp",
+  });
+
+  async function openHistory() {
+    setHistoryVisible(true);
+    setSessionsLoading(true);
+    try {
+      const data = await getSessions();
+      setSessions(data);
+    } catch {
+    } finally {
+      setSessionsLoading(false);
+    }
+  }
+
+  async function loadSession(session: Session) {
+    setHistoryVisible(false);
+    setSessionId(session.id);
+    try {
+      const msgs = await getSessionMessages(session.id);
+      setMessages(
+        msgs.map((m: any) => ({
+          id: uuid.v4() as string,
+          role: m.role,
+          content: m.content,
+        })),
+      );
+    } catch {}
+  }
+
+  function startNewChat() {
+    setHistoryVisible(false);
+    setMessages([]);
+    setSessionId(undefined);
+    setInput("");
+  }
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
-
     const text = input.trim();
-    const userMessage: Message = {
-      id: uuid.v4() as string,
-      role: "user",
-      content: text,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [
+      ...prev,
+      { id: uuid.v4() as string, role: "user", content: text },
+    ]);
     setInput("");
     setLoading(true);
 
@@ -62,6 +111,7 @@ export default function ChatScreen() {
           role: "assistant",
           content: response.answer,
           places: response.places ?? [],
+          isFollowup: response.type === "followup",
         },
       ]);
     } catch {
@@ -82,74 +132,134 @@ export default function ChatScreen() {
     }
   }, [input, loading, sessionId]);
 
-  function openSheet(places: Place[]) {
-    setSheetPlaces(places);
-    setSheetVisible(true);
+  function handlePlacePress(place: Place) {
+    router.push({
+      pathname: "/(tabs)/saved/[name]",
+      params: {
+        name: encodeURIComponent(place.name),
+        data: JSON.stringify(place),
+      },
+    } as any);
   }
 
   function renderMessage({ item }: { item: Message }) {
     const isUser = item.role === "user";
-    const hasPlaces = !isUser && item.places && item.places.length > 0;
+    const showPlaces =
+      !isUser && !item.isFollowup && item.places && item.places.length > 0;
 
     return (
-      <View
-        style={[
-          styles.messageRow,
-          isUser ? styles.rowUser : styles.rowAssistant,
-        ]}
-      >
+      <View style={[msg.row, isUser ? msg.rowUser : msg.rowAssistant]}>
         {!isUser && (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>W</Text>
+          <View style={msg.avatar}>
+            <Text style={msg.avatarText}>W</Text>
           </View>
         )}
-        <View style={styles.bubbleCol}>
+        <View style={[msg.col, isUser && { alignItems: "flex-end" }]}>
           <View
-            style={[
-              styles.bubble,
-              isUser ? styles.bubbleUser : styles.bubbleAssistant,
-            ]}
+            style={[msg.bubble, isUser ? msg.bubbleUser : msg.bubbleAssistant]}
           >
-            <Text
-              style={[
-                styles.bubbleText,
-                isUser ? styles.textUser : styles.textAssistant,
-              ]}
-            >
+            <Text style={[msg.text, isUser ? msg.textUser : msg.textAssistant]}>
               {item.content}
             </Text>
           </View>
-
-          {/* przycisk "Zobacz N miejsc" */}
-          {hasPlaces && (
-            <PlacesButton
-              count={item.places!.length}
-              onPress={() => openSheet(item.places!)}
-            />
+          {showPlaces && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginTop: 10 }}
+              contentContainerStyle={{ paddingRight: 16 }}
+            >
+              {item.places!.map((place) => (
+                <PlaceCard
+                  key={place.name}
+                  place={place}
+                  onPress={() => handlePlacePress(place)}
+                />
+              ))}
+            </ScrollView>
           )}
         </View>
       </View>
     );
   }
 
+  function groupSessionsByDate(sessions: Session[]) {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const groups: { title: string; sessions: Session[] }[] = [];
+    const todaySessions: Session[] = [];
+    const yesterdaySessions: Session[] = [];
+    const olderSessions: Session[] = [];
+
+    sessions.forEach((s) => {
+      const date = new Date(s.created_at);
+      if (date.toDateString() === today.toDateString()) {
+        todaySessions.push(s);
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        yesterdaySessions.push(s);
+      } else {
+        olderSessions.push(s);
+      }
+    });
+
+    if (todaySessions.length > 0)
+      groups.push({ title: "Dzisiaj", sessions: todaySessions });
+    if (yesterdaySessions.length > 0)
+      groups.push({ title: "Wczoraj", sessions: yesterdaySessions });
+    if (olderSessions.length > 0)
+      groups.push({ title: "Wcześniej", sessions: olderSessions });
+
+    return groups;
+  }
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Wawa Guide</Text>
-        <Text style={styles.headerSub}>Twój przewodnik po Warszawie</Text>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={PRIMARY_GRADIENT}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: "#000",
+            opacity: animatedOverlayOpacity,
+            pointerEvents: "none",
+          },
+        ]}
+      />
+
+      <View style={{ paddingTop: insets.top }}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.newChatBtn} onPress={startNewChat}>
+            <Text style={styles.newChatText}>+ Nowy chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.historyBtn} onPress={openHistory}>
+            <Text style={styles.historyBtnText}>☰</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
       >
-        <FlatList
+        <Animated.FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true },
+          )}
+          scrollEventThrottle={16}
           onContentSizeChange={() =>
             flatListRef.current?.scrollToEnd({ animated: true })
           }
@@ -173,7 +283,7 @@ export default function ChatScreen() {
               <Text style={styles.avatarText}>W</Text>
             </View>
             <View style={styles.typingBubble}>
-              <ActivityIndicator size="small" color="#666" />
+              <ActivityIndicator size="small" color="#aaa" />
             </View>
           </View>
         )}
@@ -188,7 +298,7 @@ export default function ChatScreen() {
             <TextInput
               style={styles.input}
               placeholder="Napisz wiadomość..."
-              placeholderTextColor="#aaa"
+              placeholderTextColor="#666"
               value={input}
               onChangeText={setInput}
               multiline
@@ -205,116 +315,74 @@ export default function ChatScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Bottom sheet — nad chatem, poza KeyboardAvoidingView */}
-      <PlacesBottomSheet
-        visible={sheetVisible}
-        places={sheetPlaces}
-        sessionId={sessionId}
-        onClose={() => setSheetVisible(false)}
-      />
+      <Modal
+        visible={historyVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setHistoryVisible(false)}
+      >
+        <View style={hist.overlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={() => setHistoryVisible(false)}
+          />
+          <View style={[hist.sheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={hist.handle} />
+            <View style={hist.sheetHeader}>
+              <Text style={hist.sheetTitle}>Historia chatów</Text>
+              <TouchableOpacity onPress={() => setHistoryVisible(false)}>
+                <Text style={hist.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={hist.newBtn} onPress={startNewChat}>
+              <Text style={hist.newBtnText}>+ Nowy chat</Text>
+            </TouchableOpacity>
+
+            {sessionsLoading ? (
+              <ActivityIndicator color={ACCENT} style={{ marginTop: 24 }} />
+            ) : sessions.length === 0 ? (
+              <Text style={hist.empty}>Brak historii chatów</Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {groupSessionsByDate(sessions).map((group) => (
+                  <View key={group.title}>
+                    <Text style={hist.groupTitle}>{group.title}</Text>
+                    {group.sessions.map((session) => (
+                      <TouchableOpacity
+                        key={session.id}
+                        style={hist.sessionRow}
+                        onPress={() => loadSession(session)}
+                      >
+                        <Text style={hist.sessionText} numberOfLines={1}>
+                          {session.first_message ?? "Bez tytułu"}
+                        </Text>
+                        <Text style={hist.sessionMeta}>
+                          {session.message_count} wiad.
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// ─── PlacesButton ─────────────────────────────────────────────────────────────
-
-function PlacesButton({
-  count,
-  onPress,
-}: {
-  count: number;
-  onPress: () => void;
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  function handlePressIn() {
-    Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
-  }
-  function handlePressOut() {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
-  }
-
-  return (
-    <Animated.View
-      style={{ transform: [{ scale }], alignSelf: "flex-start", marginTop: 6 }}
-    >
-      <TouchableOpacity
-        style={btnStyles.btn}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}
-      >
-        <Text style={btnStyles.icon}>📍</Text>
-        <Text style={btnStyles.text}>
-          Zobacz {count}{" "}
-          {count === 1 ? "miejsce" : count < 5 ? "miejsca" : "miejsc"}
-        </Text>
-        <Text style={btnStyles.arrow}>›</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
-const btnStyles = StyleSheet.create({
-  btn: {
+const msg = StyleSheet.create({
+  row: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: PURPLE,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  icon: { fontSize: 14 },
-  text: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.1,
-  },
-  arrow: {
-    color: "#ffffffcc",
-    fontSize: 18,
-    fontWeight: "300",
-    lineHeight: 18,
-  },
-});
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: "#FAFAFA" },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#EBEBEB",
-    backgroundColor: "#fff",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111",
-    letterSpacing: -0.3,
-  },
-  headerSub: { fontSize: 12, color: "#999", marginTop: 1 },
-  list: { padding: 16, paddingBottom: 8, gap: 12, flexGrow: 1 },
-  messageRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     gap: 8,
-  },
-  bubbleCol: {
-    flexDirection: "column",
-    maxWidth: "78%",
+    marginBottom: 16,
   },
   rowUser: { justifyContent: "flex-end" },
   rowAssistant: { justifyContent: "flex-start" },
+  col: { flex: 1 },
   avatar: {
     width: 28,
     height: 28,
@@ -322,28 +390,144 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 2,
+    marginTop: 2,
+    flexShrink: 0,
   },
   avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   bubble: {
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    maxWidth: "90%",
   },
   bubbleUser: {
-    backgroundColor: "#111",
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderBottomRightRadius: 4,
     alignSelf: "flex-end",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   bubbleAssistant: {
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderBottomLeftRadius: 4,
+    alignSelf: "flex-start",
     borderWidth: 0.5,
-    borderColor: "#E8E8E8",
+    borderColor: "rgba(255,255,255,0.12)",
   },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
+  text: { fontSize: 15, lineHeight: 22 },
   textUser: { color: "#fff" },
-  textAssistant: { color: "#111" },
+  textAssistant: { color: "#E8E8E8" },
+});
+
+const hist = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  sheet: {
+    backgroundColor: "#111",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#444",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  closeBtn: { fontSize: 18, color: "#666" },
+  newBtn: {
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  newBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  groupTitle: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  sessionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#1E1E1E",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 8,
+  },
+  sessionText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#E8E8E8",
+    fontWeight: "500",
+  },
+  sessionMeta: {
+    fontSize: 12,
+    color: "#555",
+    marginLeft: 8,
+  },
+  empty: {
+    textAlign: "center",
+    color: "#555",
+    marginTop: 24,
+    fontSize: 14,
+  },
+});
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#111" },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  newChatBtn: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  newChatText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  historyBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  historyBtnText: { color: "#fff", fontSize: 18 },
+  list: { padding: 16, paddingBottom: 8, flexGrow: 1 },
   typingRow: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -351,10 +535,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   typingBubble: {
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 0.5,
-    borderColor: "#E8E8E8",
+    borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 16,
@@ -378,35 +571,35 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   emptyIconText: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
+  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
   emptySubtitle: {
     fontSize: 14,
-    color: "#888",
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
     lineHeight: 21,
   },
   inputWrapper: {
-    backgroundColor: "#fff",
-    borderTopWidth: 0.5,
-    borderTopColor: "#EBEBEB",
     paddingHorizontal: 16,
     paddingTop: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: "rgba(255,255,255,0.08)",
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 8,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.12)",
   },
   input: {
     flex: 1,
     fontSize: 15,
-    color: "#111",
+    color: "#fff",
     maxHeight: 120,
-    textAlignVertical: "center",
     padding: 0,
   },
   sendBtn: {
@@ -417,7 +610,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendBtnDisabled: { backgroundColor: "#CCC" },
+  sendBtnDisabled: { backgroundColor: "rgba(255,255,255,0.15)" },
   sendBtnText: {
     color: "#fff",
     fontSize: 18,

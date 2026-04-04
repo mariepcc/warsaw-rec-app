@@ -1,22 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  SectionList,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useFavourite } from "@/hooks/useFavourite";
-import { getSavedPlaces } from "@/api/places";
 import type { Place } from "@/api/places";
 
 const ACCENT = "#66a494";
-const PURPLE = "#7C6FCD";
 
 const CATEGORY_DISPLAY: Record<string, string> = {
   Gastronomia: "Restauracje & Bary",
@@ -37,7 +24,7 @@ export default function PlaceRow({
   place: SavedPlace;
   onPress: () => void;
 }) {
-  const { isFav, loading, toggle } = useFavourite(place.name);
+  const { isFav, loading, toggle } = useFavourite(place.id);
 
   return (
     <TouchableOpacity style={row.card} onPress={onPress} activeOpacity={0.85}>

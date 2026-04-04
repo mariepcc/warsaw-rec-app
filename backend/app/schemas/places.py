@@ -1,16 +1,16 @@
 import math
-from uuid import UUID
 from pydantic import BaseModel, field_validator
 from typing import Any, Optional
 from datetime import datetime
 
 
 class PlaceResponse(BaseModel):
+    id: str
     name: str
     address: Optional[str] = None
     district: Optional[str] = None
     rating: Optional[float] = None
-    user_rating_count: Optional[int] = None
+    user_rating_count: Optional[float] = None
     price_level: Optional[str] = None
     main_category: Optional[str] = None
     sub_category: Optional[str] = None
@@ -54,7 +54,7 @@ class SavePlaceRequest(BaseModel):
 
 
 class SavedPlaceResponse(BaseModel):
-    id: UUID
+    id: str
     name: str
     address: Optional[str] = None
     district: Optional[str] = None
@@ -88,5 +88,6 @@ class SavedPlaceResponse(BaseModel):
     price_range_start: Optional[float] = None
     price_range_end: Optional[float] = None
     google_maps_direct_link: Optional[str] = None
+    is_favourite: bool
     session_id: str
     created_at: datetime

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -34,16 +35,10 @@ const CATEGORY_FILTERS = [
   })),
 ];
 
-type SavedPlace = Place & {
-  session_id?: string;
-  saved_at?: string;
-  is_favourite?: boolean;
-};
+type Section = { title: string; sessionId: string; data: Place[] };
 
-type Section = { title: string; sessionId: string; data: SavedPlace[] };
-
-function groupBySessions(places: SavedPlace[]): Section[] {
-  const map = new Map<string, SavedPlace[]>();
+function groupBySessions(places: Place[]): Section[] {
+  const map = new Map<string, Place[]>();
   places.forEach((p) => {
     const key = p.session_id ?? "bez-sesji";
     if (!map.has(key)) map.set(key, []);
@@ -59,18 +54,16 @@ function groupBySessions(places: SavedPlace[]): Section[] {
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [places, setPlaces] = useState<SavedPlace[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  console.log("routes", router);
 
   const fetchPlaces = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const data = await getSavedPlaces();
       setPlaces(data);
-      console.log("fetched places", data);
     } catch (err) {
       console.log("fetch error", err);
     } finally {
@@ -79,9 +72,11 @@ export default function SavedScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchPlaces();
-  }, [fetchPlaces]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPlaces();
+    }, [fetchPlaces]),
+  );
 
   const filtered = activeFilter
     ? places.filter((p) => p.main_category === activeFilter)
@@ -89,7 +84,7 @@ export default function SavedScreen() {
 
   const sections = groupBySessions(filtered);
 
-  function navigateToDetail(place: SavedPlace) {
+  function navigateToDetail(place: Place) {
     router.push({
       pathname: "/(tabs)/saved/[name]",
       params: { name: place.name, data: JSON.stringify(place) },

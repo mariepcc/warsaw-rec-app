@@ -3,7 +3,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 
 // 10.55.14.95 lub 192.168.0.231 lub 192.168.1.17
 const apiClient = axios.create({
-  baseURL: "http://192.168.1.17:8000",
+  baseURL: "http://192.168.1.20:8000",
   timeout: 30000,
 });
 
