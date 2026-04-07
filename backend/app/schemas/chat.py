@@ -35,6 +35,8 @@ class ClassificationResult(BaseModel):
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
+    message_type: Optional[str] = None
+    recommended_places: Optional[Any] = None
     content: str
 
 

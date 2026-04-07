@@ -48,11 +48,6 @@ class ChatService:
                 search_kwargs["predicates"] = predicates
 
             context = self.vec.search(expanded_query, **search_kwargs)
-            if context is not None and not context.empty:
-                self.chat_repo.save_session_context(
-                    session_id,
-                    context.to_json(orient="records", force_ascii=False),
-                )
             print(f"Initial context retrieved: {context}")
             print(f"Context length: {len(context)}")
 
@@ -60,11 +55,14 @@ class ChatService:
 
         elif classification.message_type == "followup":
             print(f"Szukam w sesji: {session_id}")
-            context_json = self.chat_repo.get_session_context(session_id)
+            context_json = self.chat_repo.get_last_rag_context(
+                session_id
+            )  # ← nowa metoda
             if context_json:
                 import io
 
                 context = pd.read_json(io.StringIO(context_json), orient="records")
+
         limit = extraction.results_limit if extraction else 5
         print(f"Number of results to search for: {limit}")
 
@@ -77,10 +75,10 @@ class ChatService:
         response._context = context
         response.type = classification.message_type
 
+        places_to_save = []
         if response.recommended_place_names and context is not None:
             recommended = set(response.recommended_place_names)
             filtered_df = context[context["name"].isin(recommended)]
-            places_to_save = []
             for _, row in filtered_df.iterrows():
                 places_to_save.append(
                     PlaceResponse(
@@ -119,11 +117,7 @@ class ChatService:
                         price_range_start=row.get("price_range_start"),
                     )
                 )
-            self.places_repo.save_places(
-                user_id,
-                places_to_save,
-                session_id,
-            )
+            self.places_repo.save_places(user_id, places_to_save, session_id)
 
         self.chat_repo.save_message(
             session_id, "user", message, message_type=classification.message_type
@@ -133,7 +127,7 @@ class ChatService:
             "assistant",
             response.answer,
             message_type=classification.message_type,
-            recommended_places=response.recommended_place_names,
+            recommended_places=[p.model_dump() for p in places_to_save],
         )
 
         return response

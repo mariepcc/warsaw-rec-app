@@ -34,7 +34,8 @@ async def get_session_messages(session_id: str):
                 id=str(uuid.uuid4()),
                 role=m.role,
                 content=m.content,
-                message_type=None,
+                type=m.message_type,
+                places=m.recommended_places or [],
                 created_at=datetime.now(timezone.utc),
             )
             for m in messages

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 export default function AppLayout() {
   return (
@@ -8,12 +9,32 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopWidth: 0.5,
-          borderTopColor: "#e5e5e5",
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
+          borderTopColor: "transparent",
+          elevation: 0,
+          shadowOpacity: 0,
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
-        tabBarActiveTintColor: "#1a1a1a",
-        tabBarInactiveTintColor: "#aaa",
+        tabBarBackground: () => (
+          <BlurView
+            intensity={60}
+            tint="light"
+            style={{
+              flex: 1,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              overflow: "hidden",
+              borderTopWidth: 0,
+              backgroundColor: "rgba(255, 255, 255, 0.4)",
+            }}
+          />
+        ),
+        tabBarActiveTintColor: "#E8622A",
+        tabBarInactiveTintColor: "#888",
         tabBarLabelStyle: {
           fontSize: 11,
           marginBottom: 4,

@@ -14,5 +14,6 @@ class MessageResponse(BaseModel):
     id: str
     role: str
     content: str
-    message_type: Optional[str]
+    type: str | None = None
+    places: list = []
     created_at: datetime

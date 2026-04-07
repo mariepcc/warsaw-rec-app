@@ -1,4 +1,5 @@
-from typing import List, Optional
+import json
+from typing import List
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from schemas.chat import ChatMessage
@@ -23,13 +24,6 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_session_created
     ON chat_messages(session_id, created_at DESC);
-    
-    
-CREATE TABLE IF NOT EXISTS chat_session_context (
-    session_id   TEXT PRIMARY KEY REFERENCES chat_sessions(id),
-    context_json TEXT NOT NULL,
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 """
 
 
@@ -89,27 +83,21 @@ class ChatRepository:
                 return [dict(row) for row in rows]
 
     def save_message(
-        self,
-        session_id: str,
-        role: str,
-        content: str,
-        message_type: Optional[str] = None,
-        recommended_places: Optional[List[str]] = None,
-    ) -> None:
+        self, session_id, role, content, message_type=None, recommended_places=None
+    ):
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO chat_messages
-                        (session_id, role, content, message_type, recommended_places)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO chat_messages (session_id, role, content, message_type, recommended_places)
+                    VALUES (%s, %s, %s, %s, %s::jsonb)
                     """,
                     (
                         session_id,
                         role,
                         content,
                         message_type,
-                        recommended_places,
+                        json.dumps(recommended_places) if recommended_places else None,
                     ),
                 )
 
@@ -118,7 +106,7 @@ class ChatRepository:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT role, content
+                    SELECT role, content, message_type, recommended_places
                     FROM chat_messages
                     WHERE session_id = %s::text
                     ORDER BY created_at ASC
@@ -128,10 +116,16 @@ class ChatRepository:
                 )
                 rows = cur.fetchall()
         return [
-            ChatMessage(role=r["role"], content=r["content"]) for r in reversed(rows)
+            ChatMessage(
+                role=r["role"],
+                content=r["content"],
+                message_type=r.get("message_type"),
+                recommended_places=r.get("recommended_places") or [],
+            )
+            for r in rows
         ]
 
-    def get_last_recommended_places(self, session_id: str) -> List[str]:
+    def get_last_rag_context(self, session_id: str) -> str | None:
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
@@ -139,38 +133,17 @@ class ChatRepository:
                     SELECT recommended_places
                     FROM chat_messages
                     WHERE session_id = %s
-                      AND role = 'assistant'
-                      AND recommended_places IS NOT NULL
+                    AND role = 'assistant'
+                    AND message_type IN ('rag', 'hybrid')
+                    AND recommended_places IS NOT NULL
                     ORDER BY created_at DESC
                     LIMIT 1
                     """,
                     (session_id,),
                 )
                 row = cur.fetchone()
-        return row["recommended_places"] if row else []
+        if not row or not row["recommended_places"]:
+            return None
+        import json
 
-    def save_session_context(self, session_id: str, context_json: str) -> None:
-        """Zapisuje pełny kontekst ostatniego RAG searchu dla sesji."""
-        with self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO chat_session_context (session_id, context_json, updated_at)
-                    VALUES (%s, %s, NOW())
-                    ON CONFLICT (session_id) DO UPDATE
-                        SET context_json = EXCLUDED.context_json,
-                            updated_at = NOW()
-                    """,
-                    (session_id, context_json),
-                )
-
-    def get_session_context(self, session_id: str) -> str | None:
-        """Odczytuje pełny kontekst ostatniego RAG searchu."""
-        with self._get_conn() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT context_json FROM chat_session_context WHERE session_id = %s",
-                    (session_id,),
-                )
-                row = cur.fetchone()
-        return row["context_json"] if row else None
+        return json.dumps(row["recommended_places"])
