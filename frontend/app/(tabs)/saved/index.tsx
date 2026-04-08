@@ -11,7 +11,8 @@ import {
   RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { usePlaceStore } from "@/store/places/placesStore";
+import { router, useRouter } from "expo-router";
 import { getSavedPlaces } from "@/api/places";
 import type { Place } from "@/api/places";
 import PlaceRow from "@/components/places/PlaceRow";
@@ -85,9 +86,10 @@ export default function SavedScreen() {
   const sections = groupBySessions(filtered);
 
   function navigateToDetail(place: Place) {
+    usePlaceStore.getState().setSelectedPlace(place);
     router.push({
       pathname: "/(tabs)/saved/[name]",
-      params: { name: place.name, data: JSON.stringify(place) },
+      params: { name: place.name },
     });
   }
 

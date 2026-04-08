@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { Platform } from "react-native";
 
 export default function AppLayout() {
   return (
@@ -10,14 +11,24 @@ export default function AppLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "transparent",
-          borderTopWidth: 0,
           borderTopColor: "transparent",
-          elevation: 0,
-          shadowOpacity: 0,
+          borderRadius: 35,
+          height: 70,
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: 20,
+          marginHorizontal: 20,
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+          overflow: "hidden",
+          paddingBottom: Platform.OS === "ios" ? 0 : 10,
+        },
+        tabBarItemStyle: {
+          height: 50,
+          marginTop: 8,
         },
         tabBarBackground: () => (
           <BlurView
@@ -25,10 +36,6 @@ export default function AppLayout() {
             tint="light"
             style={{
               flex: 1,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              overflow: "hidden",
-              borderTopWidth: 0,
               backgroundColor: "rgba(255, 255, 255, 0.4)",
             }}
           />
@@ -37,25 +44,16 @@ export default function AppLayout() {
         tabBarInactiveTintColor: "#888",
         tabBarLabelStyle: {
           fontSize: 11,
-          marginBottom: 4,
+          marginBottom: 10,
         },
       }}
     >
       <Tabs.Screen
         name="chat"
         options={{
-          title: "Chat",
+          title: "Szukaj",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Odkrywaj",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
           ),
         }}
       />
@@ -71,7 +69,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="saved/index"
         options={{
-          title: "Zapisane",
+          title: "Ulubione",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bookmark-outline" size={size} color={color} />
           ),

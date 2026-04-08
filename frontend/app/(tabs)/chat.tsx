@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { usePlaceStore } from "@/store/places/placesStore";
 import { useGradientCycle } from "@/hooks/useGradientCycle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -81,12 +82,6 @@ const MessageItem = memo(
       </View>
     );
   },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.item.id === nextProps.item.id &&
-      prevProps.item.content === nextProps.item.content
-    );
-  },
 );
 
 export default function ChatScreen() {
@@ -103,6 +98,7 @@ export default function ChatScreen() {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const lastScrollY = useRef(0);
@@ -118,14 +114,11 @@ export default function ChatScreen() {
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent =
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
     const show = Keyboard.addListener(showEvent, () => {
       setKeyboardOpen(true);
       scrollToBottom(true);
     });
-    const hide = Keyboard.addListener(hideEvent, () => {
-      setKeyboardOpen(false);
-    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
     return () => {
       show.remove();
       hide.remove();
@@ -164,6 +157,8 @@ export default function ChatScreen() {
   async function loadSession(session: Session) {
     setHistoryVisible(false);
     setSessionId(session.id);
+    setMessages([]);
+    setSessionLoading(true);
     try {
       const msgs = await getSessionMessages(session.id);
       setMessages(
@@ -171,11 +166,14 @@ export default function ChatScreen() {
           id: uuid.v4() as string,
           role: m.role,
           content: m.content,
-          places: m.places,
+          places: m.places ?? [],
           isFollowup: m.type === "followup",
         })),
       );
-    } catch {}
+    } catch {
+    } finally {
+      setSessionLoading(false);
+    }
   }
 
   function startNewChat() {
@@ -196,7 +194,6 @@ export default function ChatScreen() {
     setInput("");
     setLoading(true);
     scrollToBottom(true);
-
     try {
       const response = await sendMessage(text, sessionId);
       setSessionId(response.session_id);
@@ -227,22 +224,13 @@ export default function ChatScreen() {
 
   const handlePlacePress = useCallback(
     (place: Place) => {
+      usePlaceStore.getState().setSelectedPlace(place);
       router.push({
         pathname: "/(tabs)/saved/[name]",
-        params: {
-          name: encodeURIComponent(place.name),
-          data: JSON.stringify(place),
-        },
+        params: { name: encodeURIComponent(place.name) },
       } as any);
     },
     [router],
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
-      <MessageItem item={item} onPlacePress={handlePlacePress} />
-    ),
-    [handlePlacePress],
   );
 
   function groupSessionsByDate(sessions: Session[]) {
@@ -250,31 +238,37 @@ export default function ChatScreen() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const groups: { title: string; sessions: Session[] }[] = [];
     const todaySessions: Session[] = [];
     const yesterdaySessions: Session[] = [];
     const olderSessions: Session[] = [];
 
     sessions.forEach((s) => {
       const date = new Date(s.created_at);
-      if (date.toDateString() === today.toDateString()) {
-        todaySessions.push(s);
-      } else if (date.toDateString() === yesterday.toDateString()) {
+      if (date.toDateString() === today.toDateString()) todaySessions.push(s);
+      else if (date.toDateString() === yesterday.toDateString())
         yesterdaySessions.push(s);
-      } else {
-        olderSessions.push(s);
-      }
+      else olderSessions.push(s);
     });
 
-    if (todaySessions.length > 0)
-      groups.push({ title: "Dzisiaj", sessions: todaySessions });
-    if (yesterdaySessions.length > 0)
-      groups.push({ title: "Wczoraj", sessions: yesterdaySessions });
-    if (olderSessions.length > 0)
-      groups.push({ title: "Wcześniej", sessions: olderSessions });
-
-    return groups;
+    return [
+      ...(todaySessions.length > 0
+        ? [{ title: "Dzisiaj", sessions: todaySessions }]
+        : []),
+      ...(yesterdaySessions.length > 0
+        ? [{ title: "Wczoraj", sessions: yesterdaySessions }]
+        : []),
+      ...(olderSessions.length > 0
+        ? [{ title: "Wcześniej", sessions: olderSessions }]
+        : []),
+    ];
   }
+
+  const renderItem = useCallback(
+    ({ item }: { item: Message }) => {
+      return <MessageItem item={item} onPlacePress={handlePlacePress} />;
+    },
+    [handlePlacePress],
+  );
 
   return (
     <View style={styles.container}>
@@ -294,7 +288,7 @@ export default function ChatScreen() {
               styles.headerCommon,
               {
                 paddingTop: insets.top,
-                backgroundColor: "rgba(255, 255, 255, 0.7)",
+                backgroundColor: "rgba(255,255,255,0.7)",
               },
             ]}
           >
@@ -354,7 +348,7 @@ export default function ChatScreen() {
               styles.headerAbsolute,
               {
                 paddingTop: insets.top,
-                backgroundColor: "rgba(255, 255, 255, 0.4)",
+                backgroundColor: "rgba(255,255,255,0.4)",
               },
             ]}
           >
@@ -370,37 +364,43 @@ export default function ChatScreen() {
             style={styles.flex}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <Animated.FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderItem}
-              automaticallyAdjustKeyboardInsets={true}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={[
-                styles.list,
-                { paddingTop: insets.top + 90, paddingBottom: 10 },
-              ]}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              onContentSizeChange={() => scrollToBottom(false)}
-              onLayout={() => scrollToBottom(false)}
-              windowSize={10}
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              removeClippedSubviews={Platform.OS === "android"}
-              ListEmptyComponent={
-                <View style={styles.empty}>
-                  <View style={styles.emptyIcon}>
-                    <Text style={styles.emptyIconText}>W</Text>
+            {sessionLoading ? (
+              <View style={styles.sessionLoadingContainer}>
+                <ActivityIndicator size="large" color={ACCENT} />
+              </View>
+            ) : (
+              <Animated.FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderItem}
+                automaticallyAdjustKeyboardInsets={true}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={[
+                  styles.list,
+                  { paddingTop: insets.top + 90, paddingBottom: 10 },
+                ]}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                onContentSizeChange={() => scrollToBottom(false)}
+                onLayout={() => scrollToBottom(false)}
+                windowSize={10}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                removeClippedSubviews={Platform.OS === "android"}
+                ListEmptyComponent={
+                  <View style={styles.empty}>
+                    <View style={styles.emptyIcon}>
+                      <Text style={styles.emptyIconText}>W</Text>
+                    </View>
+                    <Text style={styles.emptyTitle}>Cześć!</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Zapytaj mnie o restauracje, kawiarnie, parki lub atrakcje
+                      w Warszawie.
+                    </Text>
                   </View>
-                  <Text style={styles.emptyTitle}>Cześć!</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Zapytaj mnie o restauracje, kawiarnie, parki lub atrakcje w
-                    Warszawie.
-                  </Text>
-                </View>
-              }
-            />
+                }
+              />
+            )}
 
             {loading && (
               <View style={styles.typingRow}>
@@ -421,10 +421,8 @@ export default function ChatScreen() {
                 {
                   paddingBottom: keyboardOpen
                     ? 12
-                    : Math.max(insets.bottom, 16) + 60,
-                },
-                {
-                  backgroundColor: "rgba(255, 255, 255, 0.4)",
+                    : Math.max(insets.bottom, 16) + 70,
+                  backgroundColor: "rgba(255,255,255,0.4)",
                 },
               ]}
             >
@@ -458,11 +456,7 @@ export default function ChatScreen() {
 }
 
 const msg = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 24,
-  },
+  row: { flexDirection: "row", alignItems: "flex-start", marginBottom: 24 },
   rowUser: { justifyContent: "flex-end" },
   rowAssistant: { justifyContent: "flex-start" },
   col: { flex: 1 },
@@ -479,11 +473,7 @@ const msg = StyleSheet.create({
     maxWidth: "100%",
     paddingHorizontal: 4,
   },
-  text: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#2a2828",
-  },
+  text: { fontSize: 15, lineHeight: 24, color: "#2a2828" },
   textUser: { fontWeight: "600" },
   textAssistant: { fontWeight: "400" },
   avatar: {
@@ -546,9 +536,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  typingBubble: {
-    paddingVertical: 8,
-  },
   typingText: { fontSize: 14, color: "#888", fontStyle: "italic" },
   headerCommon: {
     paddingHorizontal: 20,
@@ -574,17 +561,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
   },
-  historyBtnActive: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.08)",
+  historyBtnText: { color: "#1a1a1a", fontSize: 20 },
+  list: { paddingHorizontal: 16, flexGrow: 1 },
+  sessionLoadingContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  historyBtnText: { color: "#1a1a1a", fontSize: 20 },
-  historyBtnTextBlack: { color: "#000", fontSize: 20 },
-  list: { paddingHorizontal: 16, flexGrow: 1 },
   typingRow: {
     flexDirection: "row",
     alignItems: "center",

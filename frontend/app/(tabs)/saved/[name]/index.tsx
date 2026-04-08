@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   Linking,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePlaceStore } from "@/store/places/placesStore";
 import { useFavourite } from "@/hooks/useFavourite";
 import { Place } from "@/api/places";
 
@@ -74,16 +74,7 @@ function InfoRow({
 export default function PlaceDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data } = useLocalSearchParams<{ place: string; data: string }>();
-  console.log("PlaceDetailScreen params:", { data });
-
-  const place: Place | null = React.useMemo(() => {
-    try {
-      return JSON.parse(data);
-    } catch {
-      return null;
-    }
-  }, [data]);
+  const place = usePlaceStore((state) => state.selectedPlace);
 
   const { isFav, loading: favLoading, toggle } = useFavourite(place?.id ?? "");
 
@@ -101,7 +92,6 @@ export default function PlaceDetailScreen() {
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
-      {/* nagłówek */}
       <View style={s.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -130,10 +120,8 @@ export default function PlaceDetailScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* hero karta */}
         <View style={s.heroCard}>
           <View style={s.heroTop}>
-            {/* kategoria + sub */}
             <View style={s.badgeRow}>
               {place.main_category && (
                 <View style={s.badge}>
@@ -153,7 +141,6 @@ export default function PlaceDetailScreen() {
             )}
           </View>
 
-          {/* ocena + cena */}
           <View style={s.ratingRow}>
             {place.rating != null && <StarRating rating={place.rating} />}
             {place.user_rating_count != null && (
