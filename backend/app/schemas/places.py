@@ -39,6 +39,7 @@ class PlaceResponse(BaseModel):
     price_range_start: Optional[float] = None
     price_range_end: Optional[float] = None
     google_maps_direct_link: Optional[str] = None
+    editorial_summary: Optional[str] = None
 
     @field_validator("*", mode="before")
     @classmethod
@@ -88,6 +89,7 @@ class SavedPlaceResponse(BaseModel):
     price_range_start: Optional[float] = None
     price_range_end: Optional[float] = None
     google_maps_direct_link: Optional[str] = None
+    editorial_summary: Optional[str] = None
     is_favourite: bool
     session_id: str
     created_at: datetime

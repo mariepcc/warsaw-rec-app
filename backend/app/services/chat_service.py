@@ -55,9 +55,7 @@ class ChatService:
 
         elif classification.message_type == "followup":
             print(f"Szukam w sesji: {session_id}")
-            context_json = self.chat_repo.get_last_rag_context(
-                session_id
-            )  # ← nowa metoda
+            context_json = self.chat_repo.get_last_rag_context(session_id)
             if context_json:
                 import io
 
@@ -115,6 +113,7 @@ class ChatService:
                         google_maps_direct_link=row.get("google_maps_direct_link"),
                         price_range_end=row.get("price_range_end"),
                         price_range_start=row.get("price_range_start"),
+                        editorial_summary=row.get("editorial_summary"),
                     )
                 )
             self.places_repo.save_places(user_id, places_to_save, session_id)

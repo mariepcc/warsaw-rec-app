@@ -64,6 +64,7 @@ async def send_message(
                         menu_for_children=row.get("menu_for_children"),
                         main_category=row.get("main_category"),
                         sub_category=row.get("sub_category"),
+                        editorial_summary=row.get("editorial_summary"),
                     )
                 )
 

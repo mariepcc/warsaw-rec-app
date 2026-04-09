@@ -5,56 +5,73 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  useColorScheme,
+  Platform,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Place } from "@/api/places";
 import { useFavourite } from "@/hooks/useFavourite";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Gastronomia: "#E8A87C",
-  "Kawa i Słodycze": "#B8D4A8",
-  "Kultura & Rozrywka": "#A8C4D4",
-  "Natura & Rekreacja": "#C4D4A8",
+const CATEGORY_THEMES: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }
+> = {
+  Gastronomia: { icon: "restaurant", color: "#E8622A", bg: "#FEF0EA" },
+  "Kawa i Słodycze": { icon: "cafe", color: "#7C5CBF", bg: "#F2EEFB" },
+  "Kultura & Rozrywka": {
+    icon: "color-palette",
+    color: "#2A8BE8",
+    bg: "#EAF2FE",
+  },
+  "Życie Nocne": { icon: "moon", color: "#3D3D5C", bg: "#EEEEF5" },
+  "Natura & Rekreacja": { icon: "leaf", color: "#2A9E6A", bg: "#EAF7F2" },
 };
 
-const CATEGORY_INITIALS: Record<string, string> = {
-  Gastronomia: "GA",
-  "Kawa i Słodycze": "KS",
-  "Kultura & Rozrywka": "KR",
-  "Natura & Rekreacja": "NR",
+const TAG_CONFIG: Partial<
+  Record<keyof Place, { icon: keyof typeof MaterialCommunityIcons.glyphMap }>
+> = {
+  takeout: { icon: "shopping-outline" },
+  dine_in: { icon: "silverware-variant" },
+  reservable: { icon: "calendar-check-outline" },
+  outdoor_seating: { icon: "weather-sunny" },
+  serves_breakfast: { icon: "egg-outline" },
+  serves_lunch: { icon: "food-outline" },
+  serves_dinner: { icon: "food-steak" },
+  serves_dessert: { icon: "cupcake" },
+  serves_beer: { icon: "beer-outline" },
+  serves_wine: { icon: "glass-wine" },
+  serves_cocktails: { icon: "glass-cocktail" },
+  serves_coffee: { icon: "coffee-outline" },
+  serves_vegetarian: { icon: "leaf" },
+  good_for_groups: { icon: "account-group-outline" },
+  live_music: { icon: "music-note-outline" },
+  menu_for_children: { icon: "baby-face-outline" },
 };
 
-const TAG_ICONS: Partial<Record<keyof Place, string>> = {
-  serves_vegetarian: "🌿",
-  outdoor_seating: "☀️",
-  serves_coffee: "☕",
-  live_music: "🎵",
-  good_for_groups: "👥",
-  reservable: "📅",
-  takeout: "🛍️",
-};
+const TAG_COLOR = "#999";
 
-function getTags(place: Place): string[] {
-  return (Object.entries(TAG_ICONS) as [keyof Place, string][])
+function getActiveTags(place: Place) {
+  return (Object.entries(TAG_CONFIG) as [keyof Place, { icon: any }][])
     .filter(([key]) => place[key] === true)
-    .map(([, icon]) => icon)
-    .slice(0, 4);
+    .map(([, config]) => config)
+    .slice(0, 5);
 }
 
-type Props = {
+export function PlaceCard({
+  place,
+  onPress,
+}: {
   place: Place;
   onPress?: () => void;
-};
-
-export function PlaceCard({ place, onPress }: Props) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
+}) {
   const { isFav, loading, toggle } = useFavourite(place.id);
   const heartScale = useRef(new Animated.Value(1)).current;
-  const tags = getTags(place);
+  const activeTags = getActiveTags(place);
 
-  const bgColor = CATEGORY_COLORS[place.main_category ?? ""] ?? "#D4C4B8";
-  const initials = CATEGORY_INITIALS[place.main_category ?? ""] ?? "WW";
+  const theme = CATEGORY_THEMES[place.main_category ?? ""] || {
+    icon: "location",
+    color: "#888",
+    bg: "#F5F5F5",
+  };
 
   function handleHeart() {
     Animated.sequence([
@@ -73,66 +90,66 @@ export function PlaceCard({ place, onPress }: Props) {
   }
 
   return (
-    <TouchableOpacity
-      style={[s.card, isDark && s.cardDark]}
-      onPress={onPress}
-      activeOpacity={0.88}
-    >
-      {/* kolorowe tło z inicjałami zamiast zdjęcia */}
-      <View style={[s.imagePlaceholder, { backgroundColor: bgColor }]}>
-        <Text style={s.initials}>{initials}</Text>
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.9}>
+      <View style={[s.imagePlaceholder, { backgroundColor: theme.bg }]}>
+        <Ionicons name={theme.icon} size={36} color={theme.color} />
+
         {place.sub_category && (
           <View style={s.subBadge}>
             <Text style={s.subBadgeText}>{place.sub_category}</Text>
           </View>
         )}
-        {/* serce na tle */}
+
         {!loading && (
-          <TouchableOpacity
-            style={s.heartBtn}
-            onPress={handleHeart}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Animated.Text
-              style={[s.heart, { transform: [{ scale: heartScale }] }]}
-            >
-              {isFav ? "❤️" : "🤍"}
-            </Animated.Text>
+          <TouchableOpacity style={s.heartBtn} onPress={handleHeart}>
+            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+              <Ionicons
+                name={isFav ? "heart" : "heart-outline"}
+                size={18}
+                color={isFav ? "#E8622A" : "#888"}
+              />
+            </Animated.View>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* treść karty */}
-      <View style={[s.body, isDark && s.bodyDark]}>
-        <Text style={[s.name, isDark && s.nameDark]} numberOfLines={1}>
+      <View style={s.body}>
+        <Text style={s.name} numberOfLines={1}>
           {place.name}
         </Text>
 
-        {place.address && (
-          <Text style={s.address} numberOfLines={1}>
-            {place.address}
-          </Text>
-        )}
-
         <View style={s.metaRow}>
           {place.rating != null && (
-            <Text style={s.rating}>★ {place.rating.toFixed(1)}</Text>
+            <View style={s.ratingBox}>
+              <Ionicons name="star" size={13} color="#F5A623" />
+              <Text style={s.ratingText}>{place.rating.toFixed(1)}</Text>
+              {place.user_rating_count != null && (
+                <Text style={s.reviewCount}>({place.user_rating_count})</Text>
+              )}
+            </View>
           )}
-          {place.user_rating_count != null && (
-            <Text style={s.reviewCount}>({place.user_rating_count})</Text>
-          )}
-          {place.district && <Text style={s.district}>· {place.district}</Text>}
+          <Text style={s.district} numberOfLines={1}>
+            • {place.district || "Warszawa"}
+          </Text>
         </View>
 
-        {tags.length > 0 && (
+        <View style={s.footer}>
           <View style={s.tags}>
-            {tags.map((icon, i) => (
-              <View key={i} style={[s.tag, isDark && s.tagDark]}>
-                <Text style={s.tagText}>{icon}</Text>
-              </View>
+            {activeTags.map((tag, i) => (
+              <MaterialCommunityIcons
+                key={i}
+                name={tag.icon}
+                size={16}
+                color={TAG_COLOR}
+              />
             ))}
           </View>
-        )}
+          <Ionicons
+            name="chevron-forward-circle"
+            size={20}
+            color={theme.color}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -141,78 +158,101 @@ export function PlaceCard({ place, onPress }: Props) {
 const s = StyleSheet.create({
   card: {
     width: 200,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: "#fff",
-    overflow: "hidden",
-    borderWidth: 0.5,
-    borderColor: "#E0E0E0",
     marginRight: 12,
-  },
-  cardDark: {
-    backgroundColor: "#1E1E1E",
-    borderColor: "#333",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: { elevation: 3 },
+    }),
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    overflow: "hidden",
   },
   imagePlaceholder: {
-    height: 110,
+    height: 100,
     alignItems: "center",
     justifyContent: "center",
-  },
-  initials: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "rgba(255,255,255,0.55)",
-    letterSpacing: 2,
+    position: "relative",
   },
   subBadge: {
     position: "absolute",
     bottom: 8,
     left: 8,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   subBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "600",
+    color: "#444",
+    fontSize: 9,
+    fontWeight: "800",
+    textTransform: "uppercase",
   },
   heartBtn: {
     position: "absolute",
     top: 8,
     right: 8,
-  },
-  heart: { fontSize: 20 },
-  body: {
-    padding: 12,
-    gap: 4,
     backgroundColor: "#fff",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  bodyDark: { backgroundColor: "#1E1E1E" },
+  body: {
+    padding: 10,
+  },
   name: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111",
-    letterSpacing: -0.2,
+    color: "#1a1a1a",
+    marginBottom: 4,
   },
-  nameDark: { color: "#F0F0F0" },
-  address: { fontSize: 12, color: "#888" },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 2,
+    marginBottom: 8,
   },
-  rating: { fontSize: 12, color: "#F5A623", fontWeight: "600" },
-  reviewCount: { fontSize: 11, color: "#bbb" },
-  district: { fontSize: 11, color: "#aaa" },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
-  tag: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+  ratingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
-  tagDark: { backgroundColor: "#2A2A2A" },
-  tagText: { fontSize: 12 },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  reviewCount: {
+    fontSize: 11,
+    color: "#bbb",
+  },
+  district: {
+    fontSize: 11,
+    color: "#999",
+    flex: 1,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    minHeight: 20,
+  },
+  tags: {
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+  },
 });

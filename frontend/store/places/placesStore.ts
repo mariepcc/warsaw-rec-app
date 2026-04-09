@@ -3,10 +3,12 @@ import { Place } from "@/api/places";
 
 type PlaceStore = {
   selectedPlace: Place | null;
-  setSelectedPlace: (place: Place) => void;
+  source: "chat" | "saved" | null;
+  setSelectedPlace: (place: Place, source: "chat" | "saved") => void;
 };
 
 export const usePlaceStore = create<PlaceStore>((set) => ({
   selectedPlace: null,
-  setSelectedPlace: (place) => set({ selectedPlace: place }),
+  source: null,
+  setSelectedPlace: (place, source) => set({ selectedPlace: place, source }),
 }));

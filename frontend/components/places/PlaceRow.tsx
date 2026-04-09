@@ -1,109 +1,232 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useFavourite } from "@/hooks/useFavourite";
 import type { Place } from "@/api/places";
 
-const ACCENT = "#66a494";
+const CATEGORY_THEMES: Record<
+  string,
+  { icon: any; color: string; bg: string; label: string }
+> = {
+  Gastronomia: {
+    icon: "restaurant",
+    color: "#E8622A",
+    bg: "#FEF0EA",
+    label: "Jedzenie",
+  },
+  "Kawa i Słodycze": {
+    icon: "cafe",
+    color: "#7C5CBF",
+    bg: "#F2EEFB",
+    label: "Kawa & Desery",
+  },
+  "Kultura & Rozrywka": {
+    icon: "color-palette",
+    color: "#2A8BE8",
+    bg: "#EAF2FE",
+    label: "Kultura",
+  },
+  "Życie Nocne": {
+    icon: "moon",
+    color: "#3D3D5C",
+    bg: "#EEEEF5",
+    label: "Nocne życie",
+  },
+  "Natura & Rekreacja": {
+    icon: "leaf",
+    color: "#2A9E6A",
+    bg: "#EAF7F2",
+    label: "Natura",
+  },
+};
 
-const CATEGORY_DISPLAY: Record<string, string> = {
-  Gastronomia: "Restauracje & Bary",
-  "Kawa i Słodycze": "Kawiarnie & Desery",
-  "Życie Nocne": "Nocne życie",
-  "Kultura & Rozrywka": "Kultura",
-  "Natura & Rekreacja": "Natura",
+const PRICE_DISPLAY: Record<string, string> = {
+  PRICE_LEVEL_INEXPENSIVE: "$",
+  PRICE_LEVEL_MODERATE: "$$",
+  PRICE_LEVEL_EXPENSIVE: "$$$",
+  PRICE_LEVEL_LUXURY: "$$$$",
 };
-type SavedPlace = Place & {
-  session_id?: string;
-  saved_at?: string;
-  is_favourite?: boolean;
-};
+
 export default function PlaceRow({
   place,
   onPress,
 }: {
-  place: SavedPlace;
+  place: Place;
   onPress: () => void;
 }) {
   const { isFav, loading, toggle } = useFavourite(place.id);
 
+  const theme = CATEGORY_THEMES[place.main_category || ""] || {
+    icon: "location",
+    color: "#888",
+    bg: "#F5F5F5",
+    label: place.main_category,
+  };
+
   return (
-    <TouchableOpacity style={row.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={row.left}>
-        <View style={row.badgeRow}>
-          {place.main_category && (
-            <View style={row.badge}>
-              <Text style={row.badgeText}>
-                {CATEGORY_DISPLAY[place.main_category] ?? place.main_category}
-              </Text>
-            </View>
-          )}
-          {place.sub_category && (
-            <Text style={row.subCategory}>· {place.sub_category}</Text>
-          )}
-        </View>
-        <Text style={row.name} numberOfLines={1}>
-          {place.name}
-        </Text>
-        {place.address && (
-          <Text style={row.address} numberOfLines={1}>
-            📍 {place.address}
-          </Text>
-        )}
-        <View style={row.metaRow}>
-          {place.rating != null && (
-            <Text style={row.rating}>★ {place.rating.toFixed(1)}</Text>
-          )}
-          {place.user_rating_count != null && (
-            <Text style={row.reviewCount}>({place.user_rating_count})</Text>
-          )}
-          {place.price_level && (
-            <Text style={row.price}>{place.price_level}</Text>
-          )}
-        </View>
-      </View>
-      <View style={row.right}>
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.9}>
+      <View style={[s.imageContainer, { backgroundColor: theme.bg }]}>
+        <Ionicons name={theme.icon} size={32} color={theme.color} />
+
         {!loading && (
-          <TouchableOpacity
-            onPress={toggle}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={row.heart}>{isFav ? "❤️" : "🤍"}</Text>
+          <TouchableOpacity style={s.heartBadge} onPress={toggle}>
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
+              size={16}
+              color={isFav ? "#E8622A" : "#888"}
+            />
           </TouchableOpacity>
         )}
-        <Text style={row.chevron}>›</Text>
       </View>
+
+      <View style={s.info}>
+        <Text style={s.name} numberOfLines={1}>
+          {place.name}
+        </Text>
+
+        <View style={s.metaRow}>
+          {place.rating != null && (
+            <View style={s.ratingBox}>
+              <Ionicons name="star" size={12} color="#F5A623" />
+              <Text style={s.ratingText}>{place.rating.toFixed(1)}</Text>
+            </View>
+          )}
+          <Text style={s.price}>
+            {place.price_level ? (
+              <Text style={s.price}>{PRICE_DISPLAY[place.price_level]}</Text>
+            ) : null}
+          </Text>
+          <Text style={s.dot}>•</Text>
+          <Text style={s.district}>{place.district || "Warszawa"}</Text>
+        </View>
+
+        <View style={s.categoryRow}>
+          <View style={[s.badge, { backgroundColor: theme.bg }]}>
+            <Text style={[s.badgeText, { color: theme.color }]}>
+              {theme.label}
+            </Text>
+          </View>
+          {place.sub_category && (
+            <Text style={s.subCategory} numberOfLines={1}>
+              • {place.sub_category}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <Ionicons name="chevron-forward" size={16} color="#DDD" />
     </TouchableOpacity>
   );
 }
 
-const row = StyleSheet.create({
+const s = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 0.5,
-    borderColor: "#E8E8E8",
-    gap: 10,
+    borderRadius: 20,
+    padding: 10,
+    marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  left: { flex: 1, gap: 4 },
-  right: { alignItems: "center", gap: 8, paddingLeft: 4 },
-  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  imageContainer: {
+    width: 75,
+    height: 75,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  heartBadge: {
+    position: "absolute",
+    bottom: -5,
+    right: -5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  info: {
+    flex: 1,
+    paddingLeft: 12,
+    justifyContent: "center",
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 2,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  ratingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  price: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "500",
+  },
+  dot: { color: "#CCC" },
+  district: {
+    fontSize: 12,
+    color: "#888",
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
   badge: {
-    backgroundColor: ACCENT + "18",
-    borderRadius: 6,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical: 2,
+    borderRadius: 6,
   },
-  badgeText: { fontSize: 11, color: ACCENT, fontWeight: "600" },
-  subCategory: { fontSize: 11, color: "#aaa" },
-  name: { fontSize: 15, fontWeight: "600", color: "#111" },
-  address: { fontSize: 12, color: "#888" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
-  rating: { fontSize: 12, color: "#F5A623", fontWeight: "600" },
-  reviewCount: { fontSize: 11, color: "#bbb" },
-  price: { fontSize: 12, color: "#888" },
-  heart: { fontSize: 20 },
-  chevron: { fontSize: 20, color: "#CCC", fontWeight: "300" },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  subCategory: {
+    fontSize: 11,
+    color: "#AAA",
+    flex: 1,
+  },
 });

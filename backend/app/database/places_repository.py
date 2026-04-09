@@ -80,8 +80,8 @@ class PlacesRepository:
                         INSERT INTO saved_places
                             (id, user_id, session_id, name, address, district,
                             rating, user_rating_count, price_level, website, maps_url, menu_url, main_category,
-                            sub_category, metadata)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            sub_category, metadata, editorial_summary)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (user_id, name) DO NOTHING
                         RETURNING id
                         """,
@@ -101,6 +101,7 @@ class PlacesRepository:
                             place.main_category,
                             place.sub_category,
                             json.dumps(metadata),
+                            place.editorial_summary,
                         ),
                     )
 
@@ -141,6 +142,7 @@ class PlacesRepository:
                         main_category,
                         sub_category,
                         is_favourite,
+                        editorial_summary,
                         created_at,
                         metadata->>'opening_hours' as opening_hours,
                         metadata->>'website' as website,

@@ -38,6 +38,7 @@ export type Place = {
   session_id?: string;
   saved_at?: string;
   is_favourite?: boolean;
+  editorial_summary?: string;
 };
 
 export async function unsavePlace(placeName: string) {

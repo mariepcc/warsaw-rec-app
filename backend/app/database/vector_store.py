@@ -141,8 +141,20 @@ class VectorStore:
         )
 
         df["id"] = df["id"].astype(str)
+        df["editorial_summary"] = df["content"].apply(self._extract_editorial_summary)
 
         return df
+
+    @staticmethod
+    def _extract_editorial_summary(content: str) -> str | None:
+        try:
+            before_reviews = content.split(". Opinie:")[0]
+            sentences = before_reviews.split(". ", 1)
+            if len(sentences) > 1:
+                return sentences[1].strip()
+            return None
+        except Exception:
+            return None
 
     def delete(
         self,

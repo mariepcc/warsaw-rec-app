@@ -117,6 +117,7 @@ class Synthesizer:
             "maps_url",
             "website",
             "menu_url",
+            "editorial_summary",
         ]
         available = [c for c in columns if c in context.columns]
         return context[available].to_json(orient="records", indent=2, force_ascii=False)

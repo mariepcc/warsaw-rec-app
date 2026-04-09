@@ -36,10 +36,10 @@ type Message = {
 
 const ACCENT = "#dcc3c3";
 const LOADING_MESSAGES = [
-  "Thinking...",
-  "Looking for local gems...",
-  "Still searching...",
-  "Almost there...",
+  "Analizuję...",
+  "Sprawdzam najlepsze miejsca...",
+  "Wciąż szukam...",
+  "Już prawie mam...",
 ];
 
 const MessageItem = memo(
@@ -224,7 +224,8 @@ export default function ChatScreen() {
 
   const handlePlacePress = useCallback(
     (place: Place) => {
-      usePlaceStore.getState().setSelectedPlace(place);
+      usePlaceStore.getState().setSelectedPlace(place, "chat");
+      console.log(place);
       router.push({
         pathname: "/(tabs)/saved/[name]",
         params: { name: encodeURIComponent(place.name) },

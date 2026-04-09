@@ -79,6 +79,7 @@ export default function AppLayout() {
         name="saved/[name]/index"
         options={{
           href: null,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
