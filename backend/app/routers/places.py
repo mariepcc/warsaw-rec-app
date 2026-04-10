@@ -34,6 +34,12 @@ async def unsave_place(
     return {"deleted": True}
 
 
+@router.get("/all")
+async def get_all_places(user: dict = Depends(get_current_user)):
+    places = places_repo.get_all_places()
+    return places
+
+
 @router.get("/saved", response_model=list[SavedPlaceResponse])
 async def get_saved_places(
     category: Optional[str] = None,

@@ -48,6 +48,11 @@ export async function unsavePlace(placeName: string) {
   return response.data;
 }
 
+export async function getAllPlaces(): Promise<Place[]> {
+  const response = await apiClient.get("/places/all");
+  return response.data;
+}
+
 export async function getSavedPlaces(category?: string) {
   const response = await apiClient.get("/places/saved", {
     params: category ? { category } : undefined,

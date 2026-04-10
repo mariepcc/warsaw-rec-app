@@ -118,6 +118,30 @@ class PlacesRepository:
                 )
                 return cur.fetchone() is not None
 
+    def get_all_places(self) -> List[dict]:
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON ((metadata->>'name'))
+                        metadata->>'name'        as name,
+                        metadata->>'address'     as address,
+                        metadata->>'district'    as district,
+                        metadata->>'main_category' as main_category,
+                        metadata->>'sub_category'  as sub_category,
+                        (metadata->>'lat')::float  as lat,
+                        (metadata->>'lon')::float  as lon,
+                        (metadata->>'rating')::float as rating,
+                        metadata->>'price_level'   as price_level,
+                        metadata->>'maps_url'      as maps_url
+                    FROM embeddings
+                    WHERE metadata->>'lat' IS NOT NULL
+                    AND metadata->>'lon' IS NOT NULL
+                    ORDER BY metadata->>'name'
+                    """,
+                )
+                return [dict(row) for row in cur.fetchall()]
+
     def get_saved_places(
         self,
         user_id: str,
