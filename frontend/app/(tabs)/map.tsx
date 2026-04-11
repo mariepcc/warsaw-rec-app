@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Linking,
   Animated,
   Dimensions,
+  Modal,
+  Pressable,
+  ScrollView,
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import MapViewClustering from "react-native-map-clustering";
@@ -23,12 +26,16 @@ import MapFilterBar, {
   CATEGORY_COLORS,
   CATEGORY_GRADIENTS,
   CATEGORY_ICONS,
+  SUB_BY_CATEGORY,
+  PRICE_LEVELS,
+  DISTRICTS,
   MapFilterKey,
 } from "@/components/filter/FilterBar";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W * 0.78;
 const CARD_GAP = 12;
+const CARD_H = 195;
 
 const WARSAW: Region = {
   latitude: 52.2297,
@@ -36,78 +43,74 @@ const WARSAW: Region = {
   latitudeDelta: 0.06,
   longitudeDelta: 0.06,
 };
-const MIN_DELTA = 0.002;
+const MIN_DELTA = 0.001;
 const MAX_DELTA = 0.3;
+const TIGHT_DELTA = 0.003;
 
 type PlaceWithCoords = Place & { lat: number; lon: number };
 
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+function haverDist(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371,
+    dLat = ((lat2 - lat1) * Math.PI) / 180,
+    dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function PulsingDot({
-  coordinate,
-}: {
-  coordinate: { latitude: number; longitude: number };
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(0.7)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(scale, {
-            toValue: 2.6,
-            duration: 1400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 1,
-            duration: 0,
-            useNativeDriver: true,
-          }),
+const PulsingDot = memo(
+  ({ coordinate }: { coordinate: { latitude: number; longitude: number } }) => {
+    const scale = useRef(new Animated.Value(1)).current;
+    const opacity = useRef(new Animated.Value(0.7)).current;
+    useEffect(() => {
+      Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(scale, {
+              toValue: 2.6,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(scale, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 0.7,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
         ]),
-        Animated.sequence([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 1400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0.7,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    ).start();
-  }, []);
-
-  return (
-    <Marker
-      coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={false}
-    >
-      <View style={pd.wrap}>
-        <Animated.View style={[pd.ring, { transform: [{ scale }], opacity }]} />
-        <View style={pd.dot} />
-      </View>
-    </Marker>
-  );
-}
-
+      ).start();
+    }, []);
+    return (
+      <Marker
+        coordinate={coordinate}
+        anchor={{ x: 0.5, y: 0.5 }}
+        tracksViewChanges={false}
+      >
+        <View style={pd.wrap}>
+          <Animated.View
+            style={[pd.ring, { transform: [{ scale }], opacity }]}
+          />
+          <View style={pd.dot} />
+        </View>
+      </Marker>
+    );
+  },
+);
 const pd = StyleSheet.create({
   wrap: {
     width: 36,
@@ -134,60 +137,79 @@ const pd = StyleSheet.create({
   },
 });
 
-function CategoryPin({
-  category,
-  selected,
-}: {
-  category: string;
-  selected: boolean;
-}) {
-  const grad = CATEGORY_GRADIENTS[category] ?? ["#F5934A", "#E8622A"];
-  const icon = CATEGORY_ICONS[category] ?? "location-outline";
-  const sz = selected ? 44 : 38;
-  const iSz = selected ? 22 : 18;
-  const tailColor = grad[1];
-
-  return (
-    <View style={{ alignItems: "center" }}>
-      <LinearGradient
-        colors={grad}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          pin.circle,
-          { width: sz, height: sz, borderRadius: sz / 2 },
-          selected && pin.selectedShadow,
-        ]}
-      >
-        <Ionicons name={icon} size={iSz} color="#fff" />
-      </LinearGradient>
-      <View
-        style={[
-          pin.tail,
-          { borderTopColor: tailColor, borderTopWidth: selected ? 9 : 7 },
-        ]}
-      />
-    </View>
-  );
-}
-
+const CategoryPin = memo(
+  ({ category, selected }: { category: string; selected: boolean }) => {
+    const grad = CATEGORY_GRADIENTS[category] ?? ["#F5934A", "#E8622A"];
+    const icon = CATEGORY_ICONS[category] ?? "location-outline";
+    const sz = selected ? 38 : 32;
+    const iSz = selected ? 17 : 14;
+    return (
+      <View style={{ alignItems: "center" }}>
+        {selected ? (
+          <View
+            style={[
+              pin.ring,
+              { width: sz + 10, height: sz + 10, borderRadius: (sz + 10) / 2 },
+            ]}
+          >
+            <LinearGradient
+              colors={grad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                pin.circle,
+                { width: sz, height: sz, borderRadius: sz / 2 },
+              ]}
+            >
+              <Ionicons name={icon} size={iSz} color="#fff" />
+            </LinearGradient>
+          </View>
+        ) : (
+          <LinearGradient
+            colors={grad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              pin.circle,
+              { width: sz, height: sz, borderRadius: sz / 2 },
+            ]}
+          >
+            <Ionicons name={icon} size={iSz} color="#fff" />
+          </LinearGradient>
+        )}
+        <View
+          style={[
+            pin.tail,
+            { borderTopColor: grad[1], borderTopWidth: selected ? 8 : 6 },
+          ]}
+        />
+      </View>
+    );
+  },
+);
 const pin = StyleSheet.create({
-  circle: {
+  ring: {
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2.5,
+    borderColor: "#1a1a1a",
+    backgroundColor: "transparent",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+  },
+  circle: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
     borderColor: "#fff",
     shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
-  },
-  selectedShadow: {
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 10,
-    borderWidth: 3,
+    elevation: 4,
   },
   tail: {
     width: 0,
@@ -200,14 +222,14 @@ const pin = StyleSheet.create({
   },
 });
 
-function CountPopup({ count, visible }: { count: number; visible: boolean }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const prevVisible = useRef(false);
-
-  useEffect(() => {
-    if (visible && !prevVisible.current) {
-      prevVisible.current = true;
+const CountPopup = memo(
+  ({ count, trigger }: { count: number; trigger: number }) => {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(-12)).current;
+    useEffect(() => {
+      if (!trigger) return;
+      opacity.setValue(0);
+      translateY.setValue(-12);
       Animated.parallel([
         Animated.spring(opacity, { toValue: 1, useNativeDriver: true }),
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
@@ -224,28 +246,24 @@ function CountPopup({ count, visible }: { count: number; visible: boolean }) {
             duration: 400,
             useNativeDriver: true,
           }),
-        ]).start(() => {
-          prevVisible.current = false;
-        });
+        ]).start();
       }, 2800);
       return () => clearTimeout(t);
-    }
-  }, [visible, count]);
-
-  return (
-    <Animated.View
-      style={[pop.wrap, { opacity, transform: [{ translateY }] }]}
-      pointerEvents="none"
-    >
-      <BlurView intensity={72} tint="light" style={pop.blur}>
-        <Text style={pop.count}>{count}</Text>
-        <Text style={pop.label}>miejsc</Text>
-      </BlurView>
-    </Animated.View>
-  );
-}
-
-const pop = StyleSheet.create({
+    }, [trigger]);
+    return (
+      <Animated.View
+        style={[popSt.wrap, { opacity, transform: [{ translateY }] }]}
+        pointerEvents="none"
+      >
+        <BlurView intensity={72} tint="light" style={popSt.blur}>
+          <Text style={popSt.count}>{count}</Text>
+          <Text style={popSt.label}>miejsc</Text>
+        </BlurView>
+      </Animated.View>
+    );
+  },
+);
+const popSt = StyleSheet.create({
   wrap: { alignSelf: "center" },
   blur: {
     flexDirection: "row",
@@ -257,105 +275,101 @@ const pop = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.07)",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
   },
-  count: { fontSize: 15, fontWeight: "800", color: "#1a1a1a" },
-  label: { fontSize: 15, color: "#3f3f3f", fontWeight: "500" },
+  count: { fontSize: 28, fontWeight: "800", color: "#1a1a1a" },
+  label: { fontSize: 15, color: "#777", fontWeight: "500" },
 });
 
-function PlaceCard({
-  place,
-  isFav,
-  onToggleFav,
-  onNavigate,
-}: {
+type PlaceCardProps = {
   place: PlaceWithCoords;
   isFav: boolean;
   onToggleFav: () => void;
   onNavigate: () => void;
-}) {
-  const grad = CATEGORY_GRADIENTS[place.main_category ?? ""] ?? [
-    "#F5934A",
-    "#E8622A",
-  ];
-  const icon = CATEGORY_ICONS[place.main_category ?? ""] ?? "location-outline";
-  const color = CATEGORY_COLORS[place.main_category ?? ""] ?? "#E8622A";
-
-  return (
-    <View style={card.wrap}>
-      <View style={card.header}>
-        <LinearGradient
-          colors={grad}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={card.iconBox}
-        >
-          <Ionicons name={icon} size={15} color="#fff" />
-        </LinearGradient>
-        <View style={{ flex: 1 }}>
-          <Text style={card.name} numberOfLines={2}>
-            {place.name}
-          </Text>
-          {place.sub_category && (
-            <Text style={card.sub}>{place.sub_category}</Text>
-          )}
-        </View>
-        <View style={card.topRight}>
-          {place.rating != null && (
-            <View style={card.ratingBox}>
-              <Ionicons name="star" size={11} color="#F5A623" />
-              <Text style={card.rating}>{Number(place.rating).toFixed(1)}</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            onPress={onToggleFav}
-            style={card.heartBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+};
+const PlaceCard = memo(
+  ({ place, isFav, onToggleFav, onNavigate }: PlaceCardProps) => {
+    const grad = CATEGORY_GRADIENTS[place.main_category ?? ""] ?? [
+      "#F5934A",
+      "#E8622A",
+    ];
+    const icon =
+      CATEGORY_ICONS[place.main_category ?? ""] ?? "location-outline";
+    const color = CATEGORY_COLORS[place.main_category ?? ""] ?? "#E8622A";
+    const pl =
+      place.price_level === "PRICE_LEVEL_INEXPENSIVE"
+        ? "$"
+        : place.price_level === "PRICE_LEVEL_MODERATE"
+          ? "$$"
+          : place.price_level === "PRICE_LEVEL_EXPENSIVE"
+            ? "$$$"
+            : place.price_level === "PRICE_LEVEL_LUXURY"
+              ? "$$$$"
+              : null;
+    return (
+      <View style={cardSt.wrap}>
+        <View style={cardSt.header}>
+          <LinearGradient
+            colors={grad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={cardSt.iconBox}
           >
-            <Ionicons
-              name={isFav ? "heart" : "heart-outline"}
-              size={20}
-              color={isFav ? "#E8622A" : "#ccc"}
-            />
-          </TouchableOpacity>
+            <Ionicons name={icon} size={15} color="#fff" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={cardSt.name} numberOfLines={2}>
+              {place.name}
+            </Text>
+            {place.sub_category && (
+              <Text style={cardSt.sub}>{place.sub_category}</Text>
+            )}
+          </View>
+          <View style={cardSt.topRight}>
+            {place.rating != null && (
+              <View style={cardSt.ratingBox}>
+                <Ionicons name="star" size={11} color="#F5A623" />
+                <Text style={cardSt.rating}>
+                  {Number(place.rating).toFixed(1)}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={onToggleFav}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isFav ? "heart" : "heart-outline"}
+                size={20}
+                color={isFav ? "#E8622A" : "#ccc"}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      {place.address && (
-        <Text style={card.address} numberOfLines={1}>
-          {place.address}
-        </Text>
-      )}
-
-      <View style={card.footer}>
-        {place.district && <Text style={card.district}>{place.district}</Text>}
-        {place.price_level && (
-          <Text style={[card.price, { color }]}>
-            {place.price_level === "PRICE_LEVEL_INEXPENSIVE"
-              ? "$"
-              : place.price_level === "PRICE_LEVEL_MODERATE"
-                ? "$$"
-                : place.price_level === "PRICE_LEVEL_EXPENSIVE"
-                  ? "$$$"
-                  : "$$$$"}
+        {place.address && (
+          <Text style={cardSt.address} numberOfLines={1}>
+            {place.address}
           </Text>
         )}
+        <View style={cardSt.footer}>
+          {place.district && (
+            <Text style={cardSt.district}>{place.district}</Text>
+          )}
+          {pl && <Text style={[cardSt.price, { color }]}>{pl}</Text>}
+        </View>
+        <TouchableOpacity style={cardSt.navBtn} onPress={onNavigate}>
+          <Ionicons name="navigate-outline" size={14} color="#555" />
+          <Text style={cardSt.navText}>Nawiguj</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={card.navBtn} onPress={onNavigate}>
-        <Ionicons name="navigate-outline" size={14} color="#555" />
-        <Text style={card.navText}>Nawiguj</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const card = StyleSheet.create({
+    );
+  },
+  (prev, next) =>
+    prev.place.name === next.place.name && prev.isFav === next.isFav,
+);
+const cardSt = StyleSheet.create({
   wrap: {
     width: CARD_W,
+    height: CARD_H,
     backgroundColor: "#fff",
     borderRadius: 20,
     padding: 16,
@@ -392,12 +406,11 @@ const card = StyleSheet.create({
     borderRadius: 10,
   },
   rating: { fontSize: 12, fontWeight: "700", color: "#F5A623" },
-  heartBtn: { padding: 2 },
-  address: { fontSize: 12, color: "#888", marginBottom: 8 },
+  address: { fontSize: 12, color: "#888", marginBottom: 6 },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   district: { fontSize: 12, color: "#bbb" },
   price: { fontSize: 13, fontWeight: "700" },
@@ -406,7 +419,7 @@ const card = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: "#F5F5F5",
     borderWidth: 1,
@@ -415,41 +428,168 @@ const card = StyleSheet.create({
   navText: { color: "#444", fontSize: 14, fontWeight: "600" },
 });
 
+const FilterModal = memo(
+  ({
+    visible,
+    title,
+    items,
+    activeValue,
+    onSelect,
+    onClear,
+    onClose,
+  }: {
+    visible: boolean;
+    title: string;
+    items: { label: string; value: string }[];
+    activeValue: string | null;
+    onSelect: (v: string) => void;
+    onClear: () => void;
+    onClose: () => void;
+  }) => (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable style={fmSt.overlay} onPress={onClose}>
+        <Pressable style={fmSt.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={fmSt.handle} />
+          <Text style={fmSt.title}>{title}</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {items.map((item) => {
+              const active = activeValue === item.value;
+              return (
+                <TouchableOpacity
+                  key={item.value}
+                  style={fmSt.row}
+                  onPress={() => {
+                    onSelect(active ? "" : item.value);
+                    onClose();
+                  }}
+                >
+                  <Text
+                    style={[
+                      fmSt.rowText,
+                      active && { color: "#E8622A", fontWeight: "700" },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {active && (
+                    <Ionicons name="checkmark" size={18} color="#E8622A" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <TouchableOpacity
+            style={fmSt.clearBtn}
+            onPress={() => {
+              onClear();
+              onClose();
+            }}
+          >
+            <Text style={fmSt.clearText}>Wyczyść</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  ),
+);
+const fmSt = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: "65%",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e0e0e0",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#f0f0f0",
+  },
+  rowText: { fontSize: 15, color: "#333" },
+  clearBtn: {
+    marginTop: 16,
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#f5f5f5",
+  },
+  clearText: { fontSize: 15, color: "#999", fontWeight: "600" },
+});
+
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const listRef = useRef<FlatList>(null);
-  const isMapDrivingList = useRef(false);
+  const suppressViewable = useRef(false);
+  const currentDeltaRef = useRef(0.06);
 
-  const FILTER_H = insets.top + 62 + 76;
+  const FILTER_H = insets.top + 76 + 56;
   const POPUP_TOP = FILTER_H + 16;
+  const CARDS_BOT = insets.bottom + 90;
+  const CARDS_SLOT = 44 + CARD_H + 8;
 
-  const [places, setPlaces] = useState<PlaceWithCoords[]>([]);
-  const [sortedPlaces, setSortedPlaces] = useState<PlaceWithCoords[]>([]);
+  const [basePlaces, setBasePlaces] = useState<PlaceWithCoords[]>([]);
+  const [cardPlaces, setCardPlaces] = useState<PlaceWithCoords[]>([]);
   const [activeFilter, setActiveFilter] = useState<MapFilterKey>("saved");
   const [loading, setLoading] = useState(false);
   const [userCoords, setUserCoords] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [showPopup, setShowPopup] = useState(false);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [cardsOpen, setCardsOpen] = useState(false);
+  const [popupTrigger, setPopupTrigger] = useState(0);
   const [popupCount, setPopupCount] = useState(0);
   const [searchText, setSearchText] = useState("");
+  const [activeSub, setActiveSub] = useState<string | null>(null);
+  const [activePrice, setActivePrice] = useState<string | null>(null);
+  const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
+  const [modal, setModal] = useState<"sub" | "price" | "district" | null>(null);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [locationLoading, setLocationLoading] = useState(false);
 
   const cardsAnim = useRef(new Animated.Value(0)).current;
-  const cardsVisible = selectedIdx !== null && sortedPlaces.length > 0;
-
   useEffect(() => {
     Animated.spring(cardsAnim, {
-      toValue: cardsVisible ? 1 : 0,
+      toValue: cardsOpen ? 1 : 0,
       useNativeDriver: true,
-      tension: 65,
-      friction: 11,
+      tension: 70,
+      friction: 12,
     }).start();
-  }, [cardsVisible]);
+  }, [cardsOpen]);
+  const cardsTranslate = cardsAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CARDS_SLOT + CARDS_BOT + 80, 0],
+  });
 
   useEffect(() => {
     (async () => {
@@ -462,7 +602,7 @@ export default function MapScreen() {
       };
       setUserCoords(coords);
       mapRef.current?.animateToRegion(
-        { ...coords, latitudeDelta: 0.035, longitudeDelta: 0.035 },
+        { ...coords, latitudeDelta: 0.04, longitudeDelta: 0.04 },
         800,
       );
     })();
@@ -474,8 +614,13 @@ export default function MapScreen() {
 
   async function loadPlaces(filter: MapFilterKey) {
     setLoading(true);
-    setSelectedIdx(null);
+    setCardsOpen(false);
+    setSelectedName(null);
+    setCardPlaces([]);
     setSearchText("");
+    setActiveSub(null);
+    setActivePrice(null);
+    setActiveDistrict(null);
     try {
       let data: PlaceWithCoords[] = [];
       if (filter === "saved") {
@@ -496,32 +641,19 @@ export default function MapScreen() {
           (p) => p.lat && p.lon && p.main_category === filter,
         );
       }
-      setPlaces(data);
-
-      let initialSorted = [...data];
-      if (userCoords) {
-        initialSorted.sort((a, b) => {
-          const distA = getDistance(
-            userCoords.latitude,
-            userCoords.longitude,
-            a.lat,
-            a.lon,
-          );
-          const distB = getDistance(
-            userCoords.latitude,
-            userCoords.longitude,
-            b.lat,
-            b.lon,
-          );
-          return distA - distB;
-        });
-      }
-
-      setSortedPlaces(initialSorted);
+      const origin = userCoords ?? { latitude: 52.2297, longitude: 21.0122 };
+      const sorted = [...data].sort(
+        (a, b) =>
+          haverDist(origin.latitude, origin.longitude, a.lat, a.lon) -
+          haverDist(origin.latitude, origin.longitude, b.lat, b.lon),
+      );
+      setBasePlaces(sorted);
       setPopupCount(data.length);
-      setShowPopup(false);
-      setTimeout(() => setShowPopup(true), 80);
-      zoomToUser(true);
+      setPopupTrigger((t) => t + 1);
+      const region = userCoords
+        ? { ...userCoords, latitudeDelta: 0.04, longitudeDelta: 0.04 }
+        : WARSAW;
+      mapRef.current?.animateToRegion(region, 700);
     } catch (e) {
       console.log("Map error", e);
     } finally {
@@ -529,15 +661,24 @@ export default function MapScreen() {
     }
   }
 
-  function zoomToUser(strongZoom = false) {
-    const delta = strongZoom ? 0.015 : 0.045;
-    const region = userCoords
-      ? { ...userCoords, latitudeDelta: delta, longitudeDelta: delta }
-      : { ...WARSAW };
-    mapRef.current?.animateToRegion(region, 700);
-  }
+  const displayPlaces = React.useMemo(
+    () =>
+      basePlaces.filter((p) => {
+        if (
+          searchText &&
+          !p.name.toLowerCase().includes(searchText.toLowerCase())
+        )
+          return false;
+        if (activeSub && p.sub_category !== activeSub) return false;
+        if (activePrice && p.price_level !== activePrice) return false;
+        if (activeDistrict && p.district !== activeDistrict) return false;
+        return true;
+      }),
+    [basePlaces, searchText, activeSub, activePrice, activeDistrict],
+  );
 
   function handleRegionChangeComplete(r: Region) {
+    currentDeltaRef.current = r.latitudeDelta;
     let { latitudeDelta: ld, longitudeDelta: lnd } = r;
     let clamp = false;
     if (ld > MAX_DELTA) {
@@ -559,76 +700,60 @@ export default function MapScreen() {
       );
   }
 
-  function handleMarkerPress(place: PlaceWithCoords) {
-    isMapDrivingList.current = true;
-
-    const newSorted = [...places].sort((a, b) => {
-      if (a.name === place.name) return -1;
-      if (b.name === place.name) return 1;
-      const distA = getDistance(place.lat, place.lon, a.lat, a.lon);
-      const distB = getDistance(place.lat, place.lon, b.lat, b.lon);
-      return distA - distB;
-    });
-
-    setSortedPlaces(newSorted);
-    setSelectedIdx(0);
-
-    setTimeout(() => {
-      listRef.current?.scrollToIndex({
-        index: 0,
-        animated: true,
-        viewPosition: 0.5,
-      });
-      setTimeout(() => {
-        isMapDrivingList.current = false;
-      }, 400);
-    }, 100);
-
-    mapRef.current?.animateCamera(
+  function zoomToPin(lat: number, lon: number) {
+    mapRef.current?.animateToRegion(
       {
-        center: { latitude: place.lat, longitude: place.lon },
-        pitch: 0,
-        heading: 0,
-        zoom: 17,
+        latitude: lat,
+        longitude: lon,
+        latitudeDelta: TIGHT_DELTA,
+        longitudeDelta: TIGHT_DELTA,
       },
-      { duration: 800 },
+      500,
     );
   }
 
-  const handleViewable = useCallback(
-    ({ viewableItems }: any) => {
-      if (isMapDrivingList.current) return;
-      if (!viewableItems.length) return;
-      const idx = viewableItems[0].index as number;
-      if (idx == null) return;
+  function handleMarkerPress(place: PlaceWithCoords) {
+    const resorted = [...displayPlaces].sort((a, b) => {
+      if (a.name === place.name) return -1;
+      if (b.name === place.name) return 1;
+      return (
+        haverDist(place.lat, place.lon, a.lat, a.lon) -
+        haverDist(place.lat, place.lon, b.lat, b.lon)
+      );
+    });
 
-      setSelectedIdx(idx);
-      const place = sortedPlaces[idx];
+    setCardPlaces(resorted);
+    setSelectedName(place.name);
+    setCardsOpen(true);
 
-      if (place) {
-        mapRef.current?.animateCamera(
-          {
-            center: {
-              latitude: place.lat - 0.002,
-              longitude: place.lon,
-            },
-            zoom: 16,
-          },
-          { duration: 500 },
-        );
-      }
-    },
-    [sortedPlaces],
-  );
-
-  function closeCards() {
-    setSelectedIdx(null);
+    suppressViewable.current = true;
+    zoomToPin(place.lat, place.lon);
+    setTimeout(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setTimeout(() => {
+        suppressViewable.current = false;
+      }, 300);
+    }, 150);
   }
 
-  function toggleFav(place: PlaceWithCoords) {
+  const handleViewable = useCallback(({ viewableItems }: any) => {
+    if (suppressViewable.current || !viewableItems.length) return;
+    const item = viewableItems[0].item as PlaceWithCoords;
+    if (!item) return;
+    setSelectedName(item.name);
+    zoomToPin(item.lat, item.lon);
+  }, []);
+
+  function closeCards() {
+    setCardsOpen(false);
+    setSelectedName(null);
+    setTimeout(() => setCardPlaces([]), 450);
+  }
+
+  function toggleFav(name: string) {
     setFavIds((prev) => {
       const next = new Set(prev);
-      next.has(place.name) ? next.delete(place.name) : next.add(place.name);
+      next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   }
@@ -654,17 +779,34 @@ export default function MapScreen() {
     }
   }
 
-  const displayPlaces = searchText
-    ? sortedPlaces.filter((p) =>
-        p.name.toLowerCase().includes(searchText.toLowerCase()),
-      )
-    : sortedPlaces;
+  const renderCard = useCallback(
+    ({ item }: { item: PlaceWithCoords }) => (
+      <PlaceCard
+        place={item}
+        isFav={favIds.has(item.name)}
+        onToggleFav={() => toggleFav(item.name)}
+        onNavigate={() => {
+          if (item.google_maps_direct_link)
+            Linking.openURL(item.google_maps_direct_link);
+        }}
+      />
+    ),
+    [favIds],
+  );
 
-  const CARDS_BOTTOM = insets.bottom + 90;
-  const cardsTranslate = cardsAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [220, 0],
-  });
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: CARD_W + CARD_GAP,
+      offset: (CARD_W + CARD_GAP) * index,
+      index,
+    }),
+    [],
+  );
+
+  const keyExtractor = useCallback(
+    (item: PlaceWithCoords, i: number) => `card-${item.name}-${i}`,
+    [],
+  );
 
   return (
     <View style={s.root}>
@@ -678,9 +820,17 @@ export default function MapScreen() {
         moveOnMarkerPress={false}
         onRegionChangeComplete={handleRegionChangeComplete}
         clusterColor="#fff"
-        clusterTextColor="#E8622A"
-        radius={50}
-        extent={1024}
+        clusterTextColor="#1a1a1a"
+        customMapStyle={[
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }],
+          },
+        ]}
+        radius={45}
+        maxZoom={14}
+        minPoints={2}
         renderCluster={(cluster: any) => {
           const { id, geometry, onPress, properties } = cluster;
           return (
@@ -700,39 +850,44 @@ export default function MapScreen() {
           );
         }}
       >
-        {displayPlaces.map((place, idx) => (
-          <Marker
-            key={`${place.name}-${idx}`}
-            coordinate={{ latitude: place.lat, longitude: place.lon }}
-            onPress={() => handleMarkerPress(place)}
-            tracksViewChanges={false}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <CategoryPin
-              category={place.main_category ?? ""}
-              selected={
-                selectedIdx !== null &&
-                sortedPlaces[selectedIdx]?.name === place.name
-              }
-            />
-          </Marker>
-        ))}
+        {displayPlaces.map((place, idx) => {
+          const isSelected = place.name === selectedName;
 
+          return (
+            <Marker
+              key={`${place.name}-${isSelected}`}
+              coordinate={{ latitude: place.lat, longitude: place.lon }}
+              onPress={() => handleMarkerPress(place)}
+              tracksViewChanges={isSelected}
+              anchor={{ x: 0.5, y: 1 }}
+              zIndex={isSelected ? 999 : 10}
+            >
+              <CategoryPin
+                category={place.main_category ?? ""}
+                selected={isSelected}
+              />
+            </Marker>
+          );
+        })}
         {userCoords && <PulsingDot coordinate={userCoords} />}
       </MapViewClustering>
 
       <MapFilterBar
         activeFilter={activeFilter}
-        onFilterChange={(f) => {
-          setActiveFilter(f);
-          setSelectedIdx(null);
-        }}
+        onFilterChange={(f) => setActiveFilter(f)}
         searchText={searchText}
         onSearchChange={setSearchText}
+        activeSub={activeSub}
+        onSubChange={setActiveSub}
+        activePrice={activePrice}
+        onPriceChange={setActivePrice}
+        activeDistrict={activeDistrict}
+        onDistrictChange={setActiveDistrict}
+        onOpenModal={setModal}
       />
 
       <View style={[s.popupWrap, { top: POPUP_TOP }]} pointerEvents="none">
-        <CountPopup count={popupCount} visible={showPopup} />
+        <CountPopup count={popupCount} trigger={popupTrigger} />
       </View>
 
       {loading && (
@@ -744,10 +899,20 @@ export default function MapScreen() {
         </View>
       )}
 
-      <View
+      <Animated.View
         style={[
           s.controls,
-          { bottom: CARDS_BOTTOM + (cardsVisible ? 168 : 0) },
+          {
+            bottom: CARDS_BOT,
+            transform: [
+              {
+                translateY: cardsAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -(CARDS_SLOT + 12)],
+                }),
+              },
+            ],
+          },
         ]}
       >
         <TouchableOpacity style={s.nearMe} onPress={goToMyLocation}>
@@ -760,24 +925,24 @@ export default function MapScreen() {
             </>
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <Animated.View
         style={[
           s.cardsWrap,
-          { bottom: CARDS_BOTTOM, transform: [{ translateY: cardsTranslate }] },
+          { bottom: CARDS_BOT, transform: [{ translateY: cardsTranslate }] },
         ]}
+        pointerEvents={cardsOpen ? "box-none" : "none"}
       >
         <TouchableOpacity style={s.closeBtn} onPress={closeCards}>
           <BlurView intensity={70} tint="light" style={s.closeBtnInner}>
             <Ionicons name="close" size={18} color="#333" />
           </BlurView>
         </TouchableOpacity>
-
         <FlatList
           ref={listRef}
-          data={displayPlaces}
-          keyExtractor={(item, i) => `${item.name}-${i}`}
+          data={cardPlaces}
+          keyExtractor={keyExtractor}
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={CARD_W + CARD_GAP}
@@ -785,48 +950,68 @@ export default function MapScreen() {
           contentContainerStyle={{ paddingHorizontal: (SCREEN_W - CARD_W) / 2 }}
           onViewableItemsChanged={handleViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 55 }}
-          getItemLayout={(_, index) => ({
-            length: CARD_W + CARD_GAP,
-            offset: (CARD_W + CARD_GAP) * index,
-            index,
-          })}
-          renderItem={({ item }) => (
-            <PlaceCard
-              place={item}
-              isFav={favIds.has(item.name)}
-              onToggleFav={() => toggleFav(item)}
-              onNavigate={() => {
-                if (item.google_maps_direct_link)
-                  Linking.openURL(item.google_maps_direct_link);
-              }}
-            />
-          )}
+          getItemLayout={getItemLayout}
+          renderItem={renderCard}
+          windowSize={3}
+          maxToRenderPerBatch={3}
+          initialNumToRender={3}
+          removeClippedSubviews
+          disableVirtualization={false}
         />
       </Animated.View>
+
+      <FilterModal
+        visible={modal === "sub"}
+        title="Podkategoria"
+        items={(SUB_BY_CATEGORY[activeFilter] ?? []).map((x) => ({
+          label: x,
+          value: x,
+        }))}
+        activeValue={activeSub}
+        onSelect={(v) => setActiveSub(v || null)}
+        onClear={() => setActiveSub(null)}
+        onClose={() => setModal(null)}
+      />
+      <FilterModal
+        visible={modal === "price"}
+        title="Poziom cen"
+        items={PRICE_LEVELS}
+        activeValue={activePrice}
+        onSelect={(v) => setActivePrice(v || null)}
+        onClear={() => setActivePrice(null)}
+        onClose={() => setModal(null)}
+      />
+      <FilterModal
+        visible={modal === "district"}
+        title="Dzielnica"
+        items={DISTRICTS.map((d) => ({ label: d, value: d }))}
+        activeValue={activeDistrict}
+        onSelect={(v) => setActiveDistrict(v || null)}
+        onClear={() => setActiveDistrict(null)}
+        onClose={() => setModal(null)}
+      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff" },
-
   cluster: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#E8622A",
+    borderWidth: 1.5,
+    borderColor: "#1a1a1a",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.14,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
-  clusterTxt: { fontSize: 14, fontWeight: "800", color: "#E8622A" },
-
+  clusterTxt: { fontSize: 13, fontWeight: "800", color: "#1a1a1a" },
   popupWrap: {
     position: "absolute",
     left: 0,
@@ -834,7 +1019,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     zIndex: 50,
   },
-
   loadingWrap: {
     position: "absolute",
     left: 0,
@@ -856,7 +1040,6 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   loadingTxt: { fontSize: 14, color: "#555" },
-
   controls: { position: "absolute", left: 16, right: 16 },
   nearMe: {
     flexDirection: "row",
@@ -874,18 +1057,12 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   nearMeTxt: { fontSize: 15, fontWeight: "600", color: "#1a1a1a" },
-
-  cardsWrap: { position: "absolute", left: 0, right: 0 },
-
-  closeBtn: {
-    alignSelf: "flex-end",
-    marginRight: (SCREEN_W - CARD_W) / 2,
-    marginBottom: 8,
-  },
+  cardsWrap: { position: "absolute", left: 0, right: 0, zIndex: 100 },
+  closeBtn: { alignSelf: "center", marginBottom: 12 },
   closeBtnInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",

@@ -107,11 +107,74 @@ export const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   "Natura & Rekreacja": "leaf-outline",
 };
 
+export const SUB_BY_CATEGORY: Record<string, string[]> = {
+  Gastronomia: [
+    "Restauracja",
+    "Kuchnia Azjatycka",
+    "Kuchnia Włoska",
+    "Kuchnia Polska",
+    "Kuchnia Indyjska",
+    "Burgery & Amerykańska",
+    "Steki & Grill",
+    "Kuchnia Latynoamerykańska",
+    "Owoce Morza & Ryby",
+    "Kuchnia Roślinna",
+    "Fast Food & Przekąski",
+    "Kebab & Bliskowschodnia",
+    "Kuchnie Świata (Inne)",
+  ],
+  "Kawa i Słodycze": [
+    "Kawiarnia",
+    "Piekarnia & Cukiernia",
+    "Lody & Zimne Desery",
+  ],
+  "Kultura & Rozrywka": [
+    "Muzeum & Galeria",
+    "Atrakcje & Zabytki",
+    "Edukacja & Nauka",
+    "Rozrywka Aktywna",
+  ],
+  "Życie Nocne": ["Bar", "Klub"],
+  "Natura & Rekreacja": ["Park & Ogród", "ZOO & Akwarium"],
+  saved: [],
+};
+
+export const PRICE_LEVELS = [
+  { label: "$", value: "PRICE_LEVEL_INEXPENSIVE" },
+  { label: "$$", value: "PRICE_LEVEL_MODERATE" },
+  { label: "$$$", value: "PRICE_LEVEL_EXPENSIVE" },
+  { label: "$$$$", value: "PRICE_LEVEL_LUXURY" },
+];
+
+export const DISTRICTS = [
+  "Śródmieście",
+  "Mokotów",
+  "Żoliborz",
+  "Wola",
+  "Ochota",
+  "Praga Południe",
+  "Praga Północ",
+  "Ursynów",
+  "Wilanów",
+  "Bielany",
+  "Targówek",
+  "Rembertów",
+  "Wawer",
+  "Wesoła",
+];
+
 type Props = {
   activeFilter: MapFilterKey;
   onFilterChange: (key: MapFilterKey) => void;
   searchText: string;
   onSearchChange: (text: string) => void;
+  activeSub: string | null;
+  onSubChange: (v: string | null) => void;
+  activePrice: string | null;
+  onPriceChange: (v: string | null) => void;
+  activeDistrict: string | null;
+  onDistrictChange: (v: string | null) => void;
+  onOpenModal: (type: "sub" | "price" | "district") => void;
 };
 
 export default function MapFilterBar({
@@ -119,11 +182,16 @@ export default function MapFilterBar({
   onFilterChange,
   searchText,
   onSearchChange,
+  activeSub,
+  activePrice,
+  activeDistrict,
+  onOpenModal,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const HEADER_H = insets.top + 62 + 76;
+  const HEADER_H = insets.top + 76 + 56; // catRow + filterRow (no title row to save space)
 
-  const activeMeta = MAP_FILTERS.find((f) => f.key === activeFilter);
+  const activeMeta = MAP_FILTERS.find((f) => f.key === activeFilter)!;
+  const hasSubs = SUB_BY_CATEGORY[activeFilter]?.length > 0;
 
   return (
     <BlurView
@@ -131,6 +199,7 @@ export default function MapFilterBar({
       tint="light"
       style={[styles.container, { height: HEADER_H, paddingTop: insets.top }]}
     >
+      {/* ROW 1 – category icons */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -147,7 +216,6 @@ export default function MapFilterBar({
               key={f.key}
               onPress={() => onFilterChange(f.key)}
               activeOpacity={0.8}
-              style={styles.catBtnOuter}
             >
               {active ? (
                 <LinearGradient
@@ -177,6 +245,7 @@ export default function MapFilterBar({
         })}
       </ScrollView>
 
+      {/* ROW 2 – search + chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -184,36 +253,117 @@ export default function MapFilterBar({
         contentContainerStyle={styles.filterRow}
         bounces={false}
       >
+        {/* search */}
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={15} color="#aaa" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Szukaj na mapie..."
+            placeholder="Szukaj..."
             placeholderTextColor="#bbb"
             value={searchText}
             onChangeText={onSearchChange}
           />
         </View>
-        {activeMeta && (
-          <View
+
+        {/* subcategory – only when category has subs */}
+        {hasSubs && (
+          <TouchableOpacity
             style={[
-              styles.activeChip,
-              {
+              styles.chip,
+              activeSub && {
                 borderColor: activeMeta.color,
                 backgroundColor: activeMeta.lightColor,
               },
             ]}
+            onPress={() => onOpenModal("sub")}
           >
-            <Ionicons
-              name={activeMeta.icon}
-              size={13}
-              color={activeMeta.color}
-            />
-            <Text style={[styles.activeChipText, { color: activeMeta.color }]}>
-              {activeMeta.label}
+            <Text
+              style={[
+                styles.chipText,
+                activeSub && { color: activeMeta.color, fontWeight: "600" },
+              ]}
+            >
+              {activeSub ?? "Podkategoria"}
             </Text>
-          </View>
+            {activeSub ? (
+              <Ionicons
+                name="close-circle"
+                size={14}
+                color={activeMeta.color}
+                style={{ marginLeft: 4 }}
+              />
+            ) : (
+              <Ionicons
+                name="chevron-down"
+                size={13}
+                color="#aaa"
+                style={{ marginLeft: 2 }}
+              />
+            )}
+          </TouchableOpacity>
         )}
+
+        {/* price */}
+        <TouchableOpacity
+          style={[styles.chip, activePrice && styles.chipActiveOrange]}
+          onPress={() => onOpenModal("price")}
+        >
+          <Text
+            style={[
+              styles.chipText,
+              activePrice && { color: "#E8622A", fontWeight: "600" },
+            ]}
+          >
+            {activePrice
+              ? PRICE_LEVELS.find((p) => p.value === activePrice)?.label
+              : "Cena"}
+          </Text>
+          {activePrice ? (
+            <Ionicons
+              name="close-circle"
+              size={14}
+              color="#E8622A"
+              style={{ marginLeft: 4 }}
+            />
+          ) : (
+            <Ionicons
+              name="chevron-down"
+              size={13}
+              color="#aaa"
+              style={{ marginLeft: 2 }}
+            />
+          )}
+        </TouchableOpacity>
+
+        {/* district */}
+        <TouchableOpacity
+          style={[styles.chip, activeDistrict && styles.chipActiveOrange]}
+          onPress={() => onOpenModal("district")}
+        >
+          <Text
+            style={[
+              styles.chipText,
+              activeDistrict && { color: "#E8622A", fontWeight: "600" },
+            ]}
+          >
+            {activeDistrict ?? "Warszawa"}
+          </Text>
+          {activeDistrict ? (
+            <Ionicons
+              name="close-circle"
+              size={14}
+              color="#E8622A"
+              style={{ marginLeft: 4 }}
+            />
+          ) : (
+            <Ionicons
+              name="chevron-down"
+              size={13}
+              color="#aaa"
+              style={{ marginLeft: 2 }}
+            />
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </BlurView>
   );
@@ -230,23 +380,8 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(0,0,0,0.07)",
     overflow: "hidden",
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 52,
-    gap: 10,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    letterSpacing: -0.4,
-  },
-
   catScroll: { height: 76, flexGrow: 0 },
   catRow: { paddingHorizontal: 16, alignItems: "center", gap: 10, height: 76 },
-  catBtnOuter: {},
   catCircle: {
     height: 46,
     minWidth: 46,
@@ -255,7 +390,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 0.5,
     borderColor: "#e0e0e0",
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
   },
   catCircleActive: {
     flexDirection: "row",
@@ -265,12 +400,12 @@ const styles = StyleSheet.create({
   },
   catActiveLabel: { fontSize: 15, fontWeight: "700", color: "#fff" },
 
-  filterScroll: { height: 52, flexGrow: 0 },
+  filterScroll: { height: 56, flexGrow: 0 },
   filterRow: {
     paddingHorizontal: 16,
     alignItems: "center",
     gap: 8,
-    height: 52,
+    height: 56,
   },
   searchBox: {
     flexDirection: "row",
@@ -282,17 +417,19 @@ const styles = StyleSheet.create({
     height: 38,
     borderWidth: 1,
     borderColor: "#ebebeb",
-    minWidth: 160,
+    minWidth: 130,
   },
-  searchInput: { fontSize: 14, color: "#1a1a1a", padding: 0, minWidth: 120 },
-  activeChip: {
+  searchInput: { fontSize: 14, color: "#1a1a1a", padding: 0, minWidth: 90 },
+  chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     height: 38,
     borderRadius: 22,
+    backgroundColor: "#fff",
     borderWidth: 1,
+    borderColor: "#ebebeb",
   },
-  activeChipText: { fontSize: 13, fontWeight: "600" },
+  chipActiveOrange: { borderColor: "#E8622A", backgroundColor: "#FEF0EA" },
+  chipText: { fontSize: 14, color: "#666", fontWeight: "500" },
 });
