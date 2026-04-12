@@ -138,6 +138,8 @@ export default function PlaceDetailScreen() {
           onPress={() => {
             if (source === "saved") {
               router.push("/(tabs)/saved");
+            } else if (source === "map") {
+              router.push("/(tabs)/map");
             } else {
               router.push("/(tabs)/chat");
             }

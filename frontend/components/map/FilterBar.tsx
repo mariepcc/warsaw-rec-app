@@ -188,7 +188,7 @@ export default function MapFilterBar({
   onOpenModal,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const HEADER_H = insets.top + 76 + 56; // catRow + filterRow (no title row to save space)
+  const HEADER_H = insets.top + 76 + 56;
 
   const activeMeta = MAP_FILTERS.find((f) => f.key === activeFilter)!;
   const hasSubs = SUB_BY_CATEGORY[activeFilter]?.length > 0;
@@ -199,7 +199,6 @@ export default function MapFilterBar({
       tint="light"
       style={[styles.container, { height: HEADER_H, paddingTop: insets.top }]}
     >
-      {/* ROW 1 – category icons */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -245,7 +244,6 @@ export default function MapFilterBar({
         })}
       </ScrollView>
 
-      {/* ROW 2 – search + chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -253,7 +251,6 @@ export default function MapFilterBar({
         contentContainerStyle={styles.filterRow}
         bounces={false}
       >
-        {/* search */}
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={15} color="#aaa" />
           <TextInput
@@ -265,7 +262,6 @@ export default function MapFilterBar({
           />
         </View>
 
-        {/* subcategory – only when category has subs */}
         {hasSubs && (
           <TouchableOpacity
             style={[
@@ -303,7 +299,6 @@ export default function MapFilterBar({
           </TouchableOpacity>
         )}
 
-        {/* price */}
         <TouchableOpacity
           style={[styles.chip, activePrice && styles.chipActiveOrange]}
           onPress={() => onOpenModal("price")}
@@ -335,7 +330,6 @@ export default function MapFilterBar({
           )}
         </TouchableOpacity>
 
-        {/* district */}
         <TouchableOpacity
           style={[styles.chip, activeDistrict && styles.chipActiveOrange]}
           onPress={() => onOpenModal("district")}

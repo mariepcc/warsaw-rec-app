@@ -50,9 +50,9 @@ export const PlaceCard = memo(({ place }: Props) => {
   const pl = PRICE_MAP[place.price_level ?? ""] ?? null;
 
   const handlePress = useCallback(() => {
-    usePlaceStore.getState().setSelectedPlace(place, "saved");
+    usePlaceStore.getState().setSelectedPlace(place, "map");
     router.push({
-      pathname: "/(tabs)/saved/[name]",
+      pathname: "/(tabs)/place/[name]",
       params: { name: encodeURIComponent(place.name) },
     } as any);
   }, [place, router]);

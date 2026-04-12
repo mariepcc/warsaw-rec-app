@@ -48,6 +48,7 @@ class PlacesRepository:
                     """
                     SELECT DISTINCT ON ((metadata->>'name'))
                         id::text as id,
+                        contents,
                         metadata->>'name'           as name,
                         metadata->>'address'        as address,
                         metadata->>'district'       as district,
@@ -86,7 +87,29 @@ class PlacesRepository:
                     ORDER BY metadata->>'name'
                     """,
                 )
-                return [dict(row) for row in cur.fetchall()]
+                rows = cur.fetchall()
+                results = []
+
+                for row in rows:
+                    place = dict(row)
+                    place["editorial_summary"] = self._extract_editorial_summary(
+                        place.get("contents", "")
+                    )
+                    results.append(place)
+
+                return results
+
+    def _extract_editorial_summary(self, content: str) -> str | None:
+        if not content:
+            return None
+        try:
+            before_reviews = content.split(". Opinie:")[0]
+            sentences = before_reviews.split(". ", 1)
+            if len(sentences) > 1:
+                return sentences[1].strip() + "."
+            return None
+        except Exception:
+            return None
 
     def get_favourite_places(
         self,

@@ -96,7 +96,7 @@ export default function SavedScreen() {
   function navigateToDetail(place: Place) {
     usePlaceStore.getState().setSelectedPlace(place, "saved");
     router.push({
-      pathname: "/(tabs)/saved/[name]",
+      pathname: "/(tabs)/place/[name]",
       params: { name: place.name },
     });
   }

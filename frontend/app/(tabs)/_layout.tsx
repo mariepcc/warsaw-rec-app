@@ -73,7 +73,7 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="saved/index"
+        name="saved"
         options={{
           title: "Ulubione",
           tabBarIcon: ({ color, size }) => (
@@ -81,13 +81,7 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="saved/[name]/index"
-        options={{
-          href: null,
-          tabBarStyle: { display: "none" },
-        }}
-      />
+      <Tabs.Screen name="place/[name]/index" options={{ href: null }} />
       <Tabs.Screen
         name="profile"
         options={{

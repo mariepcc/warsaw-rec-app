@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
-  Linking,
   Animated,
   Dimensions,
 } from "react-native";
@@ -16,14 +15,8 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { useRouter } from "expo-router";
-import {
-  getAllPlaces,
-  getFavouritePlaces,
-  toggleFavourite,
-} from "@/api/places";
+import { getAllPlaces, getFavouritePlaces } from "@/api/places";
 import type { Place } from "@/api/places";
-import { usePlaceStore } from "@/store/placesStore";
 import { PulsingDot } from "@/components/map/PulsingDot";
 import { CategoryPin } from "@/components/map/CategoryPin";
 import { CountPopup } from "@/components/map/CountPopup";
@@ -69,7 +62,6 @@ function haverDist(lat1: number, lon1: number, lat2: number, lon2: number) {
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const listRef = useRef<FlatList>(null);
   const suppressViewable = useRef(false);
@@ -77,8 +69,8 @@ export default function MapScreen() {
 
   const FILTER_H = insets.top + 76 + 56;
   const POPUP_TOP = FILTER_H + 16;
-  const CARDS_BOT = insets.bottom + 90;
-  const CARDS_SLOT = 44 + CARD_H + 8;
+  const CARDS_BOT = insets.bottom + 70;
+  const CARDS_SLOT = CARD_H;
 
   const [basePlaces, setBasePlaces] = useState<PlaceWithCoords[]>([]);
   const [cardPlaces, setCardPlaces] = useState<PlaceWithCoords[]>([]);
@@ -438,14 +430,16 @@ export default function MapScreen() {
         ]}
       >
         <TouchableOpacity style={s.nearMe} onPress={goToMyLocation}>
-          {locationLoading ? (
-            <ActivityIndicator size="small" color="#1a1a1a" />
-          ) : (
-            <>
-              <Ionicons name="navigate" size={15} color="#1a1a1a" />
-              <Text style={s.nearMeTxt}>Near me</Text>
-            </>
-          )}
+          <BlurView intensity={80} tint="light" style={s.nearMeBlur}>
+            {locationLoading ? (
+              <ActivityIndicator size="small" color="#1a1a1a" />
+            ) : (
+              <>
+                <Ionicons name="navigate" size={15} color="#1a1a1a" />
+                <Text style={s.nearMeTxt}>Near me</Text>
+              </>
+            )}
+          </BlurView>
         </TouchableOpacity>
       </Animated.View>
 
@@ -565,9 +559,9 @@ const s = StyleSheet.create({
   nearMe: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     alignSelf: "flex-start",
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -576,6 +570,17 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+  },
+  nearMeBlur: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   nearMeTxt: { fontSize: 15, fontWeight: "600", color: "#1a1a1a" },
   cardsWrap: { position: "absolute", left: 0, right: 0, zIndex: 100 },
