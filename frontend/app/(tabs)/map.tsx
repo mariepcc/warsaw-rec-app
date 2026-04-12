@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,6 @@ import {
   Linking,
   Animated,
   Dimensions,
-  Modal,
-  Pressable,
-  ScrollView,
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import MapViewClustering from "react-native-map-clustering";
@@ -19,23 +16,26 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { getAllPlaces, getSavedPlaces } from "@/api/places";
 import type { Place } from "@/api/places";
+import { PulsingDot } from "@/components/map/PulsingDot";
+import { CategoryPin } from "@/components/map/CategoryPin";
+import { CountPopup } from "@/components/map/CountPopup";
+import {
+  PlaceCard,
+  CARD_W,
+  CARD_GAP,
+  CARD_H,
+} from "@/components/map/PlaceCard";
+import { FilterModal } from "@/components/map/FilterModal";
 import MapFilterBar, {
-  CATEGORY_COLORS,
-  CATEGORY_GRADIENTS,
-  CATEGORY_ICONS,
   SUB_BY_CATEGORY,
   PRICE_LEVELS,
   DISTRICTS,
   MapFilterKey,
-} from "@/components/filter/FilterBar";
+} from "@/components/map/FilterBar";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = SCREEN_W * 0.78;
-const CARD_GAP = 12;
-const CARD_H = 195;
 
 const WARSAW: Region = {
   latitude: 52.2297,
@@ -60,490 +60,6 @@ function haverDist(lat1: number, lon1: number, lat2: number, lon2: number) {
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
-const PulsingDot = memo(
-  ({ coordinate }: { coordinate: { latitude: number; longitude: number } }) => {
-    const scale = useRef(new Animated.Value(1)).current;
-    const opacity = useRef(new Animated.Value(0.7)).current;
-    useEffect(() => {
-      Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(scale, {
-              toValue: 2.6,
-              duration: 1400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scale, {
-              toValue: 1,
-              duration: 0,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 1400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0.7,
-              duration: 0,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ).start();
-    }, []);
-    return (
-      <Marker
-        coordinate={coordinate}
-        anchor={{ x: 0.5, y: 0.5 }}
-        tracksViewChanges={false}
-      >
-        <View style={pd.wrap}>
-          <Animated.View
-            style={[pd.ring, { transform: [{ scale }], opacity }]}
-          />
-          <View style={pd.dot} />
-        </View>
-      </Marker>
-    );
-  },
-);
-const pd = StyleSheet.create({
-  wrap: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ring: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(59,130,246,0.22)",
-    borderWidth: 1.5,
-    borderColor: "rgba(59,130,246,0.4)",
-  },
-  dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#3B82F6",
-    borderWidth: 2.5,
-    borderColor: "#fff",
-  },
-});
-
-const CategoryPin = memo(
-  ({ category, selected }: { category: string; selected: boolean }) => {
-    const grad = CATEGORY_GRADIENTS[category] ?? ["#F5934A", "#E8622A"];
-    const icon = CATEGORY_ICONS[category] ?? "location-outline";
-    const sz = selected ? 38 : 32;
-    const iSz = selected ? 17 : 14;
-    return (
-      <View style={{ alignItems: "center" }}>
-        {selected ? (
-          <View
-            style={[
-              pin.ring,
-              { width: sz + 10, height: sz + 10, borderRadius: (sz + 10) / 2 },
-            ]}
-          >
-            <LinearGradient
-              colors={grad}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                pin.circle,
-                { width: sz, height: sz, borderRadius: sz / 2 },
-              ]}
-            >
-              <Ionicons name={icon} size={iSz} color="#fff" />
-            </LinearGradient>
-          </View>
-        ) : (
-          <LinearGradient
-            colors={grad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              pin.circle,
-              { width: sz, height: sz, borderRadius: sz / 2 },
-            ]}
-          >
-            <Ionicons name={icon} size={iSz} color="#fff" />
-          </LinearGradient>
-        )}
-        <View
-          style={[
-            pin.tail,
-            { borderTopColor: grad[1], borderTopWidth: selected ? 8 : 6 },
-          ]}
-        />
-      </View>
-    );
-  },
-);
-const pin = StyleSheet.create({
-  ring: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2.5,
-    borderColor: "#1a1a1a",
-    backgroundColor: "transparent",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 8,
-  },
-  circle: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  tail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    marginTop: -1,
-  },
-});
-
-const CountPopup = memo(
-  ({ count, trigger }: { count: number; trigger: number }) => {
-    const opacity = useRef(new Animated.Value(0)).current;
-    const translateY = useRef(new Animated.Value(-12)).current;
-    useEffect(() => {
-      if (!trigger) return;
-      opacity.setValue(0);
-      translateY.setValue(-12);
-      Animated.parallel([
-        Animated.spring(opacity, { toValue: 1, useNativeDriver: true }),
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
-      ]).start();
-      const t = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: -12,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, 2800);
-      return () => clearTimeout(t);
-    }, [trigger]);
-    return (
-      <Animated.View
-        style={[popSt.wrap, { opacity, transform: [{ translateY }] }]}
-        pointerEvents="none"
-      >
-        <BlurView intensity={72} tint="light" style={popSt.blur}>
-          <Text style={popSt.count}>{count}</Text>
-          <Text style={popSt.label}>miejsc</Text>
-        </BlurView>
-      </Animated.View>
-    );
-  },
-);
-const popSt = StyleSheet.create({
-  wrap: { alignSelf: "center" },
-  blur: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 6,
-    paddingHorizontal: 24,
-    paddingVertical: 13,
-    borderRadius: 32,
-    overflow: "hidden",
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.07)",
-  },
-  count: { fontSize: 28, fontWeight: "800", color: "#1a1a1a" },
-  label: { fontSize: 15, color: "#777", fontWeight: "500" },
-});
-
-type PlaceCardProps = {
-  place: PlaceWithCoords;
-  isFav: boolean;
-  onToggleFav: () => void;
-  onNavigate: () => void;
-};
-const PlaceCard = memo(
-  ({ place, isFav, onToggleFav, onNavigate }: PlaceCardProps) => {
-    const grad = CATEGORY_GRADIENTS[place.main_category ?? ""] ?? [
-      "#F5934A",
-      "#E8622A",
-    ];
-    const icon =
-      CATEGORY_ICONS[place.main_category ?? ""] ?? "location-outline";
-    const color = CATEGORY_COLORS[place.main_category ?? ""] ?? "#E8622A";
-    const pl =
-      place.price_level === "PRICE_LEVEL_INEXPENSIVE"
-        ? "$"
-        : place.price_level === "PRICE_LEVEL_MODERATE"
-          ? "$$"
-          : place.price_level === "PRICE_LEVEL_EXPENSIVE"
-            ? "$$$"
-            : place.price_level === "PRICE_LEVEL_LUXURY"
-              ? "$$$$"
-              : null;
-    return (
-      <View style={cardSt.wrap}>
-        <View style={cardSt.header}>
-          <LinearGradient
-            colors={grad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={cardSt.iconBox}
-          >
-            <Ionicons name={icon} size={15} color="#fff" />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={cardSt.name} numberOfLines={2}>
-              {place.name}
-            </Text>
-            {place.sub_category && (
-              <Text style={cardSt.sub}>{place.sub_category}</Text>
-            )}
-          </View>
-          <View style={cardSt.topRight}>
-            {place.rating != null && (
-              <View style={cardSt.ratingBox}>
-                <Ionicons name="star" size={11} color="#F5A623" />
-                <Text style={cardSt.rating}>
-                  {Number(place.rating).toFixed(1)}
-                </Text>
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={onToggleFav}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isFav ? "heart" : "heart-outline"}
-                size={20}
-                color={isFav ? "#E8622A" : "#ccc"}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        {place.address && (
-          <Text style={cardSt.address} numberOfLines={1}>
-            {place.address}
-          </Text>
-        )}
-        <View style={cardSt.footer}>
-          {place.district && (
-            <Text style={cardSt.district}>{place.district}</Text>
-          )}
-          {pl && <Text style={[cardSt.price, { color }]}>{pl}</Text>}
-        </View>
-        <TouchableOpacity style={cardSt.navBtn} onPress={onNavigate}>
-          <Ionicons name="navigate-outline" size={14} color="#555" />
-          <Text style={cardSt.navText}>Nawiguj</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  },
-  (prev, next) =>
-    prev.place.name === next.place.name && prev.isFav === next.isFav,
-);
-const cardSt = StyleSheet.create({
-  wrap: {
-    width: CARD_W,
-    height: CARD_H,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 16,
-    marginRight: CARD_GAP,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 7,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 6,
-  },
-  iconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  name: { fontSize: 15, fontWeight: "700", color: "#1a1a1a", lineHeight: 20 },
-  sub: { fontSize: 12, color: "#aaa", marginTop: 2 },
-  topRight: { alignItems: "flex-end", gap: 4 },
-  ratingBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FFF9EC",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  rating: { fontSize: 12, fontWeight: "700", color: "#F5A623" },
-  address: { fontSize: 12, color: "#888", marginBottom: 6 },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  district: { fontSize: 12, color: "#bbb" },
-  price: { fontSize: 13, fontWeight: "700" },
-  navBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#EBEBEB",
-  },
-  navText: { color: "#444", fontSize: 14, fontWeight: "600" },
-});
-
-const FilterModal = memo(
-  ({
-    visible,
-    title,
-    items,
-    activeValue,
-    onSelect,
-    onClear,
-    onClose,
-  }: {
-    visible: boolean;
-    title: string;
-    items: { label: string; value: string }[];
-    activeValue: string | null;
-    onSelect: (v: string) => void;
-    onClear: () => void;
-    onClose: () => void;
-  }) => (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable style={fmSt.overlay} onPress={onClose}>
-        <Pressable style={fmSt.sheet} onPress={(e) => e.stopPropagation()}>
-          <View style={fmSt.handle} />
-          <Text style={fmSt.title}>{title}</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {items.map((item) => {
-              const active = activeValue === item.value;
-              return (
-                <TouchableOpacity
-                  key={item.value}
-                  style={fmSt.row}
-                  onPress={() => {
-                    onSelect(active ? "" : item.value);
-                    onClose();
-                  }}
-                >
-                  <Text
-                    style={[
-                      fmSt.rowText,
-                      active && { color: "#E8622A", fontWeight: "700" },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  {active && (
-                    <Ionicons name="checkmark" size={18} color="#E8622A" />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <TouchableOpacity
-            style={fmSt.clearBtn}
-            onPress={() => {
-              onClear();
-              onClose();
-            }}
-          >
-            <Text style={fmSt.clearText}>Wyczyść</Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  ),
-);
-const fmSt = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: "65%",
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#e0e0e0",
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#f0f0f0",
-  },
-  rowText: { fontSize: 15, color: "#333" },
-  clearBtn: {
-    marginTop: 16,
-    alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: "#f5f5f5",
-  },
-  clearText: { fontSize: 15, color: "#999", fontWeight: "600" },
-});
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -578,6 +94,7 @@ export default function MapScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
 
   const cardsAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.spring(cardsAnim, {
       toValue: cardsOpen ? 1 : 0,
@@ -586,6 +103,7 @@ export default function MapScreen() {
       friction: 12,
     }).start();
   }, [cardsOpen]);
+
   const cardsTranslate = cardsAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [CARDS_SLOT + CARDS_BOT + 80, 0],
@@ -650,10 +168,12 @@ export default function MapScreen() {
       setBasePlaces(sorted);
       setPopupCount(data.length);
       setPopupTrigger((t) => t + 1);
-      const region = userCoords
-        ? { ...userCoords, latitudeDelta: 0.04, longitudeDelta: 0.04 }
-        : WARSAW;
-      mapRef.current?.animateToRegion(region, 700);
+      mapRef.current?.animateToRegion(
+        userCoords
+          ? { ...userCoords, latitudeDelta: 0.04, longitudeDelta: 0.04 }
+          : WARSAW,
+        700,
+      );
     } catch (e) {
       console.log("Map error", e);
     } finally {
@@ -721,11 +241,9 @@ export default function MapScreen() {
         haverDist(place.lat, place.lon, b.lat, b.lon)
       );
     });
-
     setCardPlaces(resorted);
     setSelectedName(place.name);
     setCardsOpen(true);
-
     suppressViewable.current = true;
     zoomToPin(place.lat, place.lon);
     setTimeout(() => {
@@ -850,9 +368,8 @@ export default function MapScreen() {
           );
         }}
       >
-        {displayPlaces.map((place, idx) => {
+        {displayPlaces.map((place) => {
           const isSelected = place.name === selectedName;
-
           return (
             <Marker
               key={`${place.name}-${isSelected}`}
@@ -874,7 +391,7 @@ export default function MapScreen() {
 
       <MapFilterBar
         activeFilter={activeFilter}
-        onFilterChange={(f) => setActiveFilter(f)}
+        onFilterChange={setActiveFilter}
         searchText={searchText}
         onSearchChange={setSearchText}
         activeSub={activeSub}
@@ -956,7 +473,6 @@ export default function MapScreen() {
           maxToRenderPerBatch={3}
           initialNumToRender={3}
           removeClippedSubviews
-          disableVirtualization={false}
         />
       </Animated.View>
 
