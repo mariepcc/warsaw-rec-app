@@ -49,16 +49,6 @@ async def get_saved_places(
     return places
 
 
-@router.get("/{place_id}/is-favourite")
-async def is_favourite(
-    place_id: str,
-    user: dict = Depends(get_current_user),
-):
-    """Zwraca czy dane miejsce jest oznaczone jako ulubione przez usera."""
-    result = places_repo.is_favourite(user["user_id"], place_id)
-    return {"favourite": result}
-
-
 @router.post("/{place_id}/favourite")
 async def toggle_favourite(
     place_id: str,
