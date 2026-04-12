@@ -72,11 +72,6 @@ export default function PlaceDetailScreen() {
   const insets = useSafeAreaInsets();
   const place = usePlaceStore((state) => state.selectedPlace);
   const source = usePlaceStore((state) => state.source);
-  const {
-    isFav,
-    loading: favLoading,
-    toggle,
-  } = useFavourite(place?.id ?? "", place?.is_favourite ?? false);
 
   const [hoursVisible, setHoursVisible] = useState(false);
 
@@ -87,6 +82,8 @@ export default function PlaceDetailScreen() {
       </View>
     );
   }
+
+  const { isFav, loading: favLoading, toggle } = useFavourite(place);
 
   const activeFeatures = (Object.keys(FEATURE_ICONS) as (keyof Place)[]).filter(
     (key) => (place as Record<string, unknown>)[key] === true,

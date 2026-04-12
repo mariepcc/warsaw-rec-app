@@ -1,32 +1,28 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toggleFavourite } from "@/api/places";
+import type { Place } from "@/api/places";
 
-type UseFavouriteReturn = {
-  isFav: boolean;
-  loading: boolean;
-  toggle: () => Promise<void>;
-};
-
-export function useFavourite(
-  placeId: string,
-  initialValue: boolean = false,
-): UseFavouriteReturn {
-  const [isFav, setIsFav] = useState(initialValue);
+export function useFavourite(place: Place) {
+  const [isFav, setIsFav] = useState(place.is_favourite ?? false);
   const [loading, setLoading] = useState(false);
+  const placeRef = useRef(place);
+  placeRef.current = place; // ← aktualizuj przy każdym renderze
 
   const toggle = useCallback(async () => {
     const previous = isFav;
     setIsFav((v) => !v);
     setLoading(true);
     try {
-      const next = await toggleFavourite(placeId);
+      const next = await toggleFavourite(placeRef.current);
+      console.log("toggle result:", next, "previous was:", previous);
       setIsFav(next);
-    } catch {
+    } catch (e) {
+      console.log("toggle error:", e);
       setIsFav(previous);
     } finally {
       setLoading(false);
     }
-  }, [placeId, isFav]);
+  }, [isFav]);
 
   return { isFav, loading, toggle };
 }

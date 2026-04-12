@@ -13,9 +13,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlaceStore } from "@/store/places/placesStore";
 import { useRouter } from "expo-router";
-import { getSavedPlaces } from "@/api/places";
+import { getFavouritePlaces } from "@/api/places";
 import type { Place } from "@/api/places";
-import PlaceRow from "@/components/places/PlaceRow";
+import PlaceRow from "@/components/saved/PlaceRow";
 import {
   CATEGORIES,
   SUB_BY_CATEGORY,
@@ -45,8 +45,8 @@ export default function SavedScreen() {
   const fetchPlaces = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const data = await getSavedPlaces();
-      setPlaces(data.filter((p: Place) => p.is_favourite));
+      const data = await getFavouritePlaces();
+      setPlaces(data);
     } catch (err) {
       console.log("fetch error", err);
     } finally {

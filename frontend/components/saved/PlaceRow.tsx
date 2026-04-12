@@ -60,7 +60,7 @@ export default function PlaceRow({
   place: Place;
   onPress: () => void;
 }) {
-  const { isFav, loading, toggle } = useFavourite(place.id, place.is_favourite);
+  const { isFav, loading, toggle } = useFavourite(place);
 
   const theme = CATEGORY_THEMES[place.main_category || ""] || {
     icon: "location",

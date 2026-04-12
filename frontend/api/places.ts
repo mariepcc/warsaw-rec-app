@@ -41,41 +41,22 @@ export type Place = {
   editorial_summary?: string;
 };
 
-export async function unsavePlace(placeName: string) {
-  const response = await apiClient.delete(
-    `/places/delete/${encodeURIComponent(placeName)}`,
-  );
-  return response.data;
-}
-
 export async function getAllPlaces(): Promise<Place[]> {
   const response = await apiClient.get("/places/all");
   return response.data;
 }
 
-export async function getSavedPlaces(category?: string) {
-  const response = await apiClient.get("/places/saved", {
+export async function getFavouritePlaces(category?: string) {
+  const response = await apiClient.get("/places/favourites", {
     params: category ? { category } : undefined,
   });
   return response.data;
 }
 
-export async function checkSaved(placeName: string) {
-  const response = await apiClient.get(
-    `/places/saved/${encodeURIComponent(placeName)}/check`,
+export async function toggleFavourite(place: Place): Promise<boolean> {
+  const response = await apiClient.post<{ is_favourite: boolean }>(
+    `/places/favourites/${encodeURIComponent(place.id)}/toggle`,
+    place,
   );
-  return response.data;
-}
-export async function isFavourite(placeName: string): Promise<boolean> {
-  const response = await apiClient.get<{ favourite: boolean }>(
-    `/places/${encodeURIComponent(placeName)}/is-favourite`,
-  );
-  return response.data.favourite;
-}
-
-export async function toggleFavourite(placeName: string): Promise<boolean> {
-  const response = await apiClient.post<{ favourite: boolean }>(
-    `/places/${encodeURIComponent(placeName)}/favourite`,
-  );
-  return response.data.favourite;
+  return response.data.is_favourite;
 }

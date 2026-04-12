@@ -16,8 +16,14 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { getAllPlaces, getSavedPlaces } from "@/api/places";
+import { useRouter } from "expo-router";
+import {
+  getAllPlaces,
+  getFavouritePlaces,
+  toggleFavourite,
+} from "@/api/places";
 import type { Place } from "@/api/places";
+import { usePlaceStore } from "@/store/places/placesStore";
 import { PulsingDot } from "@/components/map/PulsingDot";
 import { CategoryPin } from "@/components/map/CategoryPin";
 import { CountPopup } from "@/components/map/CountPopup";
@@ -63,6 +69,7 @@ function haverDist(lat1: number, lon1: number, lat2: number, lon2: number) {
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const listRef = useRef<FlatList>(null);
   const suppressViewable = useRef(false);
@@ -90,7 +97,7 @@ export default function MapScreen() {
   const [activePrice, setActivePrice] = useState<string | null>(null);
   const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
   const [modal, setModal] = useState<"sub" | "price" | "district" | null>(null);
-  const [favIds, setFavIds] = useState<Set<string>>(new Set());
+  const [favMap, setFavMap] = useState<Map<string, boolean>>(new Map());
   const [locationLoading, setLocationLoading] = useState(false);
 
   const cardsAnim = useRef(new Animated.Value(0)).current;
@@ -142,7 +149,7 @@ export default function MapScreen() {
     try {
       let data: PlaceWithCoords[] = [];
       if (filter === "saved") {
-        const raw = await getSavedPlaces();
+        const raw = await getFavouritePlaces();
         data = (raw as any[])
           .filter(
             (p) => (p.lat || p.metadata?.lat) && (p.lon || p.metadata?.lon),
@@ -152,12 +159,17 @@ export default function MapScreen() {
             lat: p.metadata?.lat ?? p.lat,
             lon: p.metadata?.lon ?? p.lon,
           }));
-        setFavIds(new Set(data.map((p) => p.name)));
+        const map = new Map<string, boolean>();
+        data.forEach((p) => map.set(p.id, p.is_favourite ?? true));
+        setFavMap(map);
       } else {
         const raw = await getAllPlaces();
         data = (raw as any[]).filter(
           (p) => p.lat && p.lon && p.main_category === filter,
         );
+        const map = new Map<string, boolean>();
+        data.forEach((p) => map.set(p.id, p.is_favourite ?? false));
+        setFavMap(map);
       }
       const origin = userCoords ?? { latitude: 52.2297, longitude: 21.0122 };
       const sorted = [...data].sort(
@@ -268,14 +280,6 @@ export default function MapScreen() {
     setTimeout(() => setCardPlaces([]), 450);
   }
 
-  function toggleFav(name: string) {
-    setFavIds((prev) => {
-      const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
-      return next;
-    });
-  }
-
   async function goToMyLocation() {
     setLocationLoading(true);
     try {
@@ -298,18 +302,8 @@ export default function MapScreen() {
   }
 
   const renderCard = useCallback(
-    ({ item }: { item: PlaceWithCoords }) => (
-      <PlaceCard
-        place={item}
-        isFav={favIds.has(item.name)}
-        onToggleFav={() => toggleFav(item.name)}
-        onNavigate={() => {
-          if (item.google_maps_direct_link)
-            Linking.openURL(item.google_maps_direct_link);
-        }}
-      />
-    ),
-    [favIds],
+    ({ item }: { item: PlaceWithCoords }) => <PlaceCard place={item} />,
+    [],
   );
 
   const getItemLayout = useCallback(
@@ -343,6 +337,17 @@ export default function MapScreen() {
           {
             featureType: "poi",
             elementType: "labels",
+            stylers: [{ visibility: "off" }],
+          },
+          {
+            featureType: "poi",
+            elementType: "all",
+            stylers: [{ visibility: "off" }],
+          },
+          { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+          {
+            featureType: "transit",
+            elementType: "labels.icon",
             stylers: [{ visibility: "off" }],
           },
         ]}

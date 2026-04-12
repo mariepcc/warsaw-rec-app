@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
-import { PlaceCard } from "@/components/places/PlaceCard";
+import { PlaceCard } from "@/components/chat/PlaceCard";
 import { Place } from "@/api/places";
 
 type Message = {

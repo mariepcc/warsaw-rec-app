@@ -49,11 +49,6 @@ class PlaceResponse(BaseModel):
         return v
 
 
-class SavePlaceRequest(BaseModel):
-    place: PlaceResponse
-    session_id: Optional[str] = None
-
-
 class SavedPlaceResponse(BaseModel):
     id: str
     name: str
@@ -91,5 +86,5 @@ class SavedPlaceResponse(BaseModel):
     google_maps_direct_link: Optional[str] = None
     editorial_summary: Optional[str] = None
     is_favourite: bool
-    session_id: str
+    session_id: Optional[str] = None
     created_at: datetime

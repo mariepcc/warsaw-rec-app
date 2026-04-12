@@ -63,7 +63,7 @@ export function PlaceCard({
   place: Place;
   onPress?: () => void;
 }) {
-  const { isFav, loading, toggle } = useFavourite(place.id, place.is_favourite);
+  const { isFav, loading, toggle } = useFavourite(place);
   const heartScale = useRef(new Animated.Value(1)).current;
   const activeTags = getActiveTags(place);
 

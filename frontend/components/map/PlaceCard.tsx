@@ -1,18 +1,22 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   CATEGORY_GRADIENTS,
   CATEGORY_ICONS,
   CATEGORY_COLORS,
 } from "@/components/map/FilterBar";
+import { usePlaceStore } from "@/store/places/placesStore";
+import { useFavourite } from "@/hooks/useFavourite";
 import type { Place } from "@/api/places";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -31,79 +35,97 @@ const PRICE_MAP: Record<string, string> = {
 
 type Props = {
   place: PlaceWithCoords;
-  isFav: boolean;
-  onToggleFav: () => void;
-  onNavigate: () => void;
 };
 
-export const PlaceCard = memo(
-  ({ place, isFav, onToggleFav, onNavigate }: Props) => {
-    const grad = CATEGORY_GRADIENTS[place.main_category ?? ""] ?? [
-      "#F5934A",
-      "#E8622A",
-    ];
-    const icon =
-      CATEGORY_ICONS[place.main_category ?? ""] ?? "location-outline";
-    const color = CATEGORY_COLORS[place.main_category ?? ""] ?? "#E8622A";
-    const pl = PRICE_MAP[place.price_level ?? ""] ?? null;
+export const PlaceCard = memo(({ place }: Props) => {
+  const router = useRouter();
+  const { isFav, toggle } = useFavourite(place);
 
-    return (
-      <View style={s.wrap}>
-        <View style={s.header}>
-          <LinearGradient
-            colors={grad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.iconBox}
-          >
-            <Ionicons name={icon} size={15} color="#fff" />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={s.name} numberOfLines={2}>
-              {place.name}
-            </Text>
-            {place.sub_category && (
-              <Text style={s.sub}>{place.sub_category}</Text>
-            )}
-          </View>
-          <View style={s.topRight}>
-            {place.rating != null && (
-              <View style={s.ratingBox}>
-                <Ionicons name="star" size={11} color="#F5A623" />
-                <Text style={s.rating}>{Number(place.rating).toFixed(1)}</Text>
-              </View>
-            )}
-            <TouchableOpacity
-              onPress={onToggleFav}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isFav ? "heart" : "heart-outline"}
-                size={20}
-                color={isFav ? "#E8622A" : "#ccc"}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        {place.address && (
-          <Text style={s.address} numberOfLines={1}>
-            {place.address}
+  const grad = CATEGORY_GRADIENTS[place.main_category ?? ""] ?? [
+    "#F5934A",
+    "#E8622A",
+  ];
+  const icon = CATEGORY_ICONS[place.main_category ?? ""] ?? "location-outline";
+  const color = CATEGORY_COLORS[place.main_category ?? ""] ?? "#E8622A";
+  const pl = PRICE_MAP[place.price_level ?? ""] ?? null;
+
+  const handlePress = useCallback(() => {
+    usePlaceStore.getState().setSelectedPlace(place, "saved");
+    router.push({
+      pathname: "/(tabs)/saved/[name]",
+      params: { name: encodeURIComponent(place.name) },
+    } as any);
+  }, [place, router]);
+
+  const handleNavigate = useCallback(() => {
+    if (place.google_maps_direct_link)
+      Linking.openURL(place.google_maps_direct_link);
+    else if (place.maps_url) Linking.openURL(place.maps_url);
+  }, [place.google_maps_direct_link, place.maps_url]);
+
+  return (
+    <TouchableOpacity activeOpacity={0.95} onPress={handlePress} style={s.wrap}>
+      <View style={s.header}>
+        <LinearGradient
+          colors={grad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.iconBox}
+        >
+          <Ionicons name={icon} size={15} color="#fff" />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={s.name} numberOfLines={2}>
+            {place.name}
           </Text>
-        )}
-        <View style={s.footer}>
-          {place.district && <Text style={s.district}>{place.district}</Text>}
-          {pl && <Text style={[s.price, { color }]}>{pl}</Text>}
+          {place.sub_category && (
+            <Text style={s.sub}>{place.sub_category}</Text>
+          )}
         </View>
-        <TouchableOpacity style={s.navBtn} onPress={onNavigate}>
-          <Ionicons name="navigate-outline" size={14} color="#555" />
-          <Text style={s.navText}>Nawiguj</Text>
-        </TouchableOpacity>
+        <View style={s.topRight}>
+          {place.rating != null && (
+            <View style={s.ratingBox}>
+              <Ionicons name="star" size={11} color="#F5A623" />
+              <Text style={s.rating}>{Number(place.rating).toFixed(1)}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              toggle();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
+              size={20}
+              color={isFav ? "#E8622A" : "#ccc"}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
-    );
-  },
-  (prev, next) =>
-    prev.place.name === next.place.name && prev.isFav === next.isFav,
-);
+      {place.address && (
+        <Text style={s.address} numberOfLines={1}>
+          {place.address}
+        </Text>
+      )}
+      <View style={s.footer}>
+        {place.district && <Text style={s.district}>{place.district}</Text>}
+        {pl && <Text style={[s.price, { color }]}>{pl}</Text>}
+      </View>
+      <TouchableOpacity
+        style={s.navBtn}
+        onPress={(e) => {
+          e.stopPropagation();
+          handleNavigate();
+        }}
+      >
+        <Ionicons name="navigate-outline" size={14} color="#555" />
+        <Text style={s.navText}>Nawiguj</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+});
 
 const s = StyleSheet.create({
   wrap: {
