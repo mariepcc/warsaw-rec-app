@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
-import { usePlaceStore } from "@/store/places/placesStore";
+import { usePlaceStore } from "@/store/placesStore";
 import { useFavourite } from "@/hooks/useFavourite";
 import { Place } from "@/api/places";
 

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { signIn, signOut } from "aws-amplify/auth";
-import { useAuthStore } from "@/store/auth/authStore";
+import { useAuthStore } from "@/store/authStore";
 
 export default function LoginScreen() {
   const router = useRouter();

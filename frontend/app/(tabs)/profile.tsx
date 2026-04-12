@@ -13,7 +13,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchUserAttributes, signOut } from "aws-amplify/auth";
-import { useAuthStore } from "@/store/auth/authStore";
+import { useAuthStore } from "@/store/authStore";
 
 const ACCENT = "#66a494";
 const GRADIENT: [string, string] = ["#e8d5c4", "#c4d4e8"];

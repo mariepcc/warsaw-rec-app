@@ -37,3 +37,9 @@ async def toggle_favourite(
         return {"is_favourite": is_fav}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/favourite-names")
+async def get_favourite_names(user: dict = Depends(get_current_user)):
+    names = places_repo.get_favourite_names(user["user_id"])
+    return {"names": names}

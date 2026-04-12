@@ -60,3 +60,10 @@ export async function toggleFavourite(place: Place): Promise<boolean> {
   );
   return response.data.is_favourite;
 }
+
+export async function getFavouriteNames(): Promise<string[]> {
+  const response = await apiClient.get<{ names: string[] }>(
+    "/places/favourite-names",
+  );
+  return response.data.names;
+}

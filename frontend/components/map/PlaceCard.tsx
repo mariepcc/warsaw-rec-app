@@ -15,7 +15,7 @@ import {
   CATEGORY_ICONS,
   CATEGORY_COLORS,
 } from "@/components/map/FilterBar";
-import { usePlaceStore } from "@/store/places/placesStore";
+import { usePlaceStore } from "@/store/placesStore";
 import { useFavourite } from "@/hooks/useFavourite";
 import type { Place } from "@/api/places";
 

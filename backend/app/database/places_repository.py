@@ -209,3 +209,12 @@ class PlacesRepository:
                 )
                 row = cur.fetchone()
                 return row[0]
+
+    def get_favourite_names(self, user_id: str) -> list[str]:
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT name FROM saved_places WHERE user_id = %s AND is_favourite = true",
+                    (user_id,),
+                )
+                return [row[0] for row in cur.fetchall()]

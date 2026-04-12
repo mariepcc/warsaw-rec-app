@@ -13,7 +13,7 @@ import { FlashList } from "@shopify/flash-list";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
-import { usePlaceStore } from "@/store/places/placesStore";
+import { usePlaceStore } from "@/store/placesStore";
 import { useGradientCycle } from "@/hooks/useGradientCycle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";

@@ -1,5 +1,5 @@
 import { Redirect } from "expo-router";
-import { useAuthStore } from "@/store/auth/authStore";
+import { useAuthStore } from "@/store/authStore";
 import { useEffect } from "react";
 import { getCurrentUser } from "aws-amplify/auth";
 

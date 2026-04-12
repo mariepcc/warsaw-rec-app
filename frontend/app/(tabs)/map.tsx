@@ -23,7 +23,7 @@ import {
   toggleFavourite,
 } from "@/api/places";
 import type { Place } from "@/api/places";
-import { usePlaceStore } from "@/store/places/placesStore";
+import { usePlaceStore } from "@/store/placesStore";
 import { PulsingDot } from "@/components/map/PulsingDot";
 import { CategoryPin } from "@/components/map/CategoryPin";
 import { CountPopup } from "@/components/map/CountPopup";

@@ -11,7 +11,7 @@ import {
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { usePlaceStore } from "@/store/places/placesStore";
+import { usePlaceStore } from "@/store/placesStore";
 import { useRouter } from "expo-router";
 import { getFavouritePlaces } from "@/api/places";
 import type { Place } from "@/api/places";
