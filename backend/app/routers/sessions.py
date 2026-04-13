@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import traceback
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from dependencies import get_current_user
@@ -43,3 +44,16 @@ async def get_session_messages(session_id: str):
     except Exception as e:
         print(f"BŁĄD POBIERANIA HISTORII: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{session_id}")
+async def delete_session(
+    session_id: str,
+    user: dict = Depends(get_current_user),
+):
+    try:
+        repo.delete_session(session_id, user["user_id"])
+        return {"success": True}
+    except Exception:
+        traceback.print_exc()
+        raise

@@ -82,6 +82,25 @@ class ChatRepository:
                 rows = cur.fetchall()
                 return [dict(row) for row in rows]
 
+    def delete_session(self, session_id: str, user_id: str) -> None:
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM chat_messages
+                    WHERE session_id = %s
+                    """,
+                    (session_id,),
+                )
+                cur.execute(
+                    """
+                    DELETE FROM chat_sessions
+                    WHERE id = %s AND user_id = %s
+                    """,
+                    (session_id, user_id),
+                )
+            conn.commit()
+
     def save_message(
         self, session_id, role, content, message_type=None, recommended_places=None
     ):

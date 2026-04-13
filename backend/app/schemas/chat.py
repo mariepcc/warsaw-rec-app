@@ -49,6 +49,7 @@ class SynthesizedResponse(BaseModel):
         description="Typ wiadomości: nowe zapytanie, followup, lub hybrid"
     )
     enough_context: bool = Field(description="Czy asystent miał wystarczający kontekst")
+    recommended_places: List[PlaceResponse] = Field(default_factory=list)
     recommended_place_names: List[str] = Field(
         default_factory=list,
         description="Nazwy poleconych miejsc (do zapisu w historii)",

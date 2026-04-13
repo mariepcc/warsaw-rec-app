@@ -1,5 +1,6 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
+import Markdown from "react-native-markdown-display";
 import { PlaceCard } from "@/components/chat/PlaceCard";
 import { Place } from "@/api/places";
 
@@ -20,16 +21,18 @@ export const MessageItem = memo(
     onPlacePress: (place: Place) => void;
   }) => {
     const isUser = item.role === "user";
-    const showPlaces =
-      !isUser && !item.isFollowup && item.places && item.places.length > 0;
+    const places = useMemo(() => item.places ?? [], [item.id]);
+    const showPlaces = !isUser && !item.isFollowup && places.length > 0;
 
     return (
       <View style={[s.row, isUser ? s.rowUser : s.rowAssistant]}>
         <View style={[s.col, isUser && { alignItems: "flex-end" }]}>
           <View style={isUser ? s.bubbleUser : s.assistantTextContainer}>
-            <Text style={[s.text, isUser ? s.textUser : s.textAssistant]}>
-              {item.content}
-            </Text>
+            {isUser ? (
+              <Text style={[s.text, s.textUser]}>{item.content}</Text>
+            ) : (
+              <Markdown style={markdownStyle}>{item.content}</Markdown>
+            )}
           </View>
           {showPlaces && (
             <ScrollView
@@ -38,7 +41,7 @@ export const MessageItem = memo(
               style={{ marginTop: 16 }}
               contentContainerStyle={{ paddingRight: 16 }}
             >
-              {item.places!.map((place) => (
+              {places.map((place) => (
                 <PlaceCard
                   key={place.name}
                   place={place}
@@ -55,7 +58,16 @@ export const MessageItem = memo(
     prev.item.id === next.item.id && prev.item.content === next.item.content,
 );
 
-const ACCENT = "#dcc3c3";
+const markdownStyle = {
+  body: {
+    fontSize: 14,
+    lineHeight: 24,
+    color: "#3f3b3b",
+    fontWeight: "400" as const,
+  },
+  strong: { fontWeight: "bold" as const },
+  paragraph: { marginTop: 0, marginBottom: 8 },
+};
 
 const s = StyleSheet.create({
   row: { marginBottom: 24 },
@@ -75,7 +87,7 @@ const s = StyleSheet.create({
     maxWidth: "100%",
     paddingHorizontal: 4,
   },
-  text: { fontSize: 15, lineHeight: 24, color: "#2a2828" },
+  text: { fontSize: 14, lineHeight: 24, color: "#3f3b3b" },
   textUser: { fontWeight: "600" },
   textAssistant: { fontWeight: "400" },
 });

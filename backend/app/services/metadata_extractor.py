@@ -126,20 +126,20 @@ Zamiast tego:
 - Maksimum: 10
 
 ━━━ CLEAN QUERY ━━━
-Przepisz zapytanie BEZ filtrów liczbowych (rating, price_level, user_rating_count)
-i BEZ nazw dzielnic/lokalizacji.
-ZACHOWAJ: typ kuchni, typ miejsca, atmosferę, opis doświadczenia — 
-to jest kluczowe dla semantic search.
+Przepisz zapytanie zachowując CAŁĄ semantykę użytkownika.
+Usuń TYLKO: konkretne liczby (oceny, ceny), nazwy dzielnic/ulic.
+ZACHOWAJ WSZYSTKO INNE: typ miejsca, atmosferę, okazję, nastrój, towarzystwo,
+typ kuchni, porę dnia, opis doświadczenia, przymiotniki.
 
 Przykłady:
-"popularna indyjska restauracja blisko Galerii Mokotów wysokie oceny"
-→ clean_query: "indyjska restauracja autentyczna kuchnia curry"
+"modne klimatyczne miejsca na śniadanie wysokie oceny Mokotów"
+→ clean_query: "modne klimatyczne kawiarnie na śniadanie przytulna atmosfera"
 
-"tania wegańska kawiarnia na Mokotowie z ogródkiem"  
-→ clean_query: "wegańska kawiarnia roślinna kuchnia"
+"tania wegańska kawiarnia z ogródkiem"
+→ clean_query: "wegańska kawiarnia roślinna menu ogródek na zewnątrz"
 
-"najlepszy bar z koktajlami w Śródmieściu"
-→ clean_query: "bar koktajle dobra atmosfera"
+"romantyczna restauracja na randkę wieczorem"
+→ clean_query: "romantyczna restauracja intymna atmosfera kolacja wieczór"
 """
 
 
@@ -156,7 +156,10 @@ ZASADY:
 - ABSOLUTNIE NIE wymyślaj nazw własnych miejsc — żadnych nazw restauracji, kawiarni itp.
 - Pisz w trzeciej osobie bez podmiotu: "Serwuje autentyczne curry..." nie "Restauracja X serwuje..."
 - Skup się na charakterze miejsca, NIE na lokalizacji
-- Pisz w języku polskim, tylko opis bez wstępu i komentarzy
+- Uwzględnij kontekst użycia: pora dnia, okazja (randka, praca, rodzina), nastrój
+- Jeśli zapytanie dotyczy śniadania — opisz klimat poranny, światło, spokój
+- Jeśli wieczór/randka — opisz atmosferę, oświetlenie, intymność
+- Pisz w języku polskim
 
 Przykład dla "indyjskie jedzenie autentyczna kuchnia":
 "Serwuje autentyczne dania kuchni indyjskiej — curry, biryani i świeżo 

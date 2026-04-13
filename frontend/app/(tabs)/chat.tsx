@@ -9,7 +9,6 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { TouchableOpacity } from "react-native";
@@ -18,7 +17,7 @@ import { useGradientCycle } from "@/hooks/useGradientCycle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { sendMessage } from "@/api/chat";
-import { getSessions, getSessionMessages } from "@/api/sessions";
+import { getSessions, getSessionMessages, deleteSession } from "@/api/sessions";
 import type { Session } from "@/api/sessions";
 import { Place } from "@/api/places";
 import { MessageItem } from "@/components/chat/MessageItem";
@@ -83,7 +82,8 @@ export default function ChatScreen() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
 
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<Message>>(null);
+  const sessionIdRef = useRef<string | undefined>(undefined);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -131,6 +131,7 @@ export default function ChatScreen() {
   async function loadSession(session: Session) {
     setHistoryVisible(false);
     setSessionId(session.id);
+    sessionIdRef.current = session.id;
     setMessages([]);
     setSessionLoading(true);
     try {
@@ -150,10 +151,21 @@ export default function ChatScreen() {
     }
   }
 
+  async function handleDelete(sessionId: string) {
+    try {
+      await deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (sessionIdRef.current === sessionId) {
+        startNewChat();
+      }
+    } catch {}
+  }
+
   function startNewChat() {
     setHistoryVisible(false);
     setMessages([]);
     setSessionId(undefined);
+    sessionIdRef.current = undefined;
     setInput("");
   }
 
@@ -169,8 +181,10 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const response = await sendMessage(text, sessionId);
+      const response = await sendMessage(text, sessionIdRef.current);
       setSessionId(response.session_id);
+      sessionIdRef.current = response.session_id;
+      console.log("type:", response.type);
       setMessages((prev) => [
         {
           id: uuid.v4() as string,
@@ -193,13 +207,13 @@ export default function ChatScreen() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, sessionId]);
+  }, [input, loading]);
 
   const handlePlacePress = useCallback(
     (place: Place) => {
       usePlaceStore.getState().setSelectedPlace(place, "chat");
       router.push({
-        pathname: "/(tabs)/saved/[name]",
+        pathname: "/(tabs)/place/[name]",
         params: { name: encodeURIComponent(place.name) },
       } as any);
     },
@@ -235,6 +249,7 @@ export default function ChatScreen() {
           onBack={() => setHistoryVisible(false)}
           onNewChat={startNewChat}
           onSelectSession={loadSession}
+          onDeleteSession={handleDelete}
           headerHeight={insets.top + 70}
         />
       ) : (
@@ -281,19 +296,15 @@ export default function ChatScreen() {
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 automaticallyAdjustKeyboardInsets={true}
-                windowSize={5}
-                initialNumToRender={15}
-                maxToRenderPerBatch={5}
-                removeClippedSubviews={Platform.OS === "android"}
                 ListEmptyComponent={
                   <View style={s.empty}>
-                    <View style={s.emptyIcon}>
-                      <Text style={s.emptyIconText}>W</Text>
-                    </View>
-                    <Text style={s.emptyTitle}>Cześć!</Text>
+                    <Text style={s.emptyStars}>✨</Text>
+                    <Text style={s.emptyTitle}>Hej 👋</Text>
                     <Text style={s.emptySubtitle}>
-                      Zapytaj mnie o restauracje, kawiarnie, parki lub atrakcje
-                      w Warszawie.
+                      Na co masz dzisiaj ochotę?
+                    </Text>
+                    <Text style={s.emptyInstruction}>
+                      Znajdę dla Ciebie idealną miejscówkę.{"\n"}Pytaj śmiało.
                     </Text>
                   </View>
                 }
@@ -332,7 +343,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: "#1a1a1a" },
+  headerTitle: { fontSize: 22, fontFamily: "DMSans_700Bold", color: "#1a1a1a" },
   historyBtn: {
     width: 44,
     height: 44,
@@ -344,7 +355,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.05)",
   },
   historyBtnText: { color: "#1a1a1a", fontSize: 20 },
-  list: { paddingHorizontal: 16 },
+  list: { paddingHorizontal: 16, flexGrow: 1 },
   sessionLoadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -355,24 +366,27 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
-    paddingTop: 100,
-    gap: 12,
-    transform: [{ scaleY: -1 }],
+    marginTop: -40,
   },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#dcc3c3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyIconText: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#1a1a1a" },
-  emptySubtitle: {
-    fontSize: 14,
-    color: "rgba(0,0,0,0.5)",
+  emptyStars: { fontSize: 40, marginBottom: 20 },
+  emptyTitle: {
+    fontSize: 26,
+    fontFamily: "DMSans_700Bold",
+    color: "#1a1a1a",
     textAlign: "center",
-    lineHeight: 21,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 22,
+    fontFamily: "DMSans_700Bold",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  emptyInstruction: {
+    fontSize: 16,
+    color: "#444",
+    textAlign: "center",
+    lineHeight: 22,
   },
 });

@@ -12,6 +12,10 @@ export async function getSessions(): Promise<Session[]> {
   return response.data;
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  await apiClient.delete(`/sessions/${sessionId}`);
+}
+
 export async function getSessionMessages(sessionId: string) {
   const response = await apiClient.get(`/sessions/${sessionId}/messages`);
   return response.data;

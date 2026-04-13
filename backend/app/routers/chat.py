@@ -75,6 +75,6 @@ async def send_message(
             places=places,
             enough_context=response.enough_context,
         )
-    except Exception as e:
-        traceback.print_exc(e)
+    except Exception:
+        traceback.print_exc()
         raise

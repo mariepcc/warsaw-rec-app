@@ -5,14 +5,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import { Feather } from "@expo/vector-icons";
 import { Session } from "@/api/sessions";
 
 const ACCENT = "#dcc3c3";
 
 type Group = { title: string; sessions: Session[] };
-
 type Props = {
   groups: Group[];
   loading: boolean;
@@ -21,6 +23,7 @@ type Props = {
   onBack: () => void;
   onNewChat: () => void;
   onSelectSession: (session: Session) => void;
+  onDeleteSession: (sessionId: string) => void;
   headerHeight: number;
 };
 
@@ -32,8 +35,33 @@ export function ChatHistory({
   onBack,
   onNewChat,
   onSelectSession,
+  onDeleteSession,
   headerHeight,
 }: Props) {
+  function handleDelete(sessionId: string) {
+    Alert.alert("Usuń chat", "Na pewno chcesz usunąć tę rozmowę?", [
+      { text: "Anuluj", style: "cancel" },
+      {
+        text: "Usuń",
+        style: "destructive",
+        onPress: () => onDeleteSession(sessionId),
+      },
+    ]);
+  }
+
+  function renderRightActions(sessionId: string) {
+    return (
+      <View style={s.deleteActionContainer}>
+        <TouchableOpacity
+          style={s.deleteAction}
+          onPress={() => handleDelete(sessionId)}
+        >
+          <Feather name="trash-2" size={18} color="#534e4e" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={s.fullScreen}>
       <BlurView
@@ -72,15 +100,21 @@ export function ChatHistory({
             <View key={group.title}>
               <Text style={s.groupTitle}>{group.title}</Text>
               {group.sessions.map((session) => (
-                <TouchableOpacity
+                <Swipeable
                   key={session.id}
-                  style={s.sessionRow}
-                  onPress={() => onSelectSession(session)}
+                  renderRightActions={() => renderRightActions(session.id)}
+                  rightThreshold={40}
+                  overshootRight={false}
                 >
-                  <Text style={s.sessionText} numberOfLines={1}>
-                    {session.first_message ?? "Bez tytułu"}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.sessionRow}
+                    onPress={() => onSelectSession(session)}
+                  >
+                    <Text style={s.sessionText} numberOfLines={1}>
+                      {session.first_message ?? "Bez tytułu"}
+                    </Text>
+                  </TouchableOpacity>
+                </Swipeable>
               ))}
             </View>
           ))}
@@ -137,4 +171,25 @@ const s = StyleSheet.create({
   },
   sessionText: { fontSize: 15, color: "#1a1a1a", fontWeight: "500" },
   empty: { textAlign: "center", color: "#888", marginTop: 24, fontSize: 14 },
+  deleteActionContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+    marginLeft: 12,
+  },
+  deleteAction: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(119, 114, 114, 0.1)",
+  },
+  deleteActionText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
+  },
 });

@@ -1,4 +1,5 @@
 import pandas as pd
+import io
 from schemas.places import PlaceResponse
 from schemas.chat import SynthesizedResponse
 from config.settings import get_settings
@@ -43,25 +44,23 @@ class ChatService:
             print(f"Extracted predicates: {predicates}")
             print(f"Expanded query for retrieval: {expanded_query}")
 
-            search_kwargs = {"limit": extraction.results_limit + 2}
+            buffer = max(5, extraction.results_limit * 2)
+            search_kwargs = {"limit": extraction.results_limit + buffer}
             if predicates is not None:
                 search_kwargs["predicates"] = predicates
 
             context = self.vec.search(expanded_query, **search_kwargs)
-            print(f"Initial context retrieved: {context}")
-            print(f"Context length: {len(context)}")
 
             context = MetadataExtractor.filter_by_opening_hours(context, extraction)
+            available = len(context) if context is not None else 0
+            limit = min(max(extraction.results_limit, min(available, 5)), 5)
 
         elif classification.message_type == "followup":
-            print(f"Szukam w sesji: {session_id}")
             context_json = self.chat_repo.get_last_rag_context(session_id)
             if context_json:
-                import io
-
                 context = pd.read_json(io.StringIO(context_json), orient="records")
+                limit = len(context)
 
-        limit = extraction.results_limit if extraction else 5
         print(f"Number of results to search for: {limit}")
 
         response = Synthesizer.generate_response(
@@ -69,16 +68,15 @@ class ChatService:
             chat_history=history,
             context=context,
             results_limit=limit,
+            message_type=classification.message_type,
         )
-        response._context = context
-        response.type = classification.message_type
 
-        places_to_save = []
+        recommended_places = []
         if response.recommended_place_names and context is not None:
             recommended = set(response.recommended_place_names)
             filtered_df = context[context["name"].isin(recommended)]
             for _, row in filtered_df.iterrows():
-                places_to_save.append(
+                recommended_places.append(
                     PlaceResponse(
                         id=row.get("id"),
                         name=row.get("name"),
@@ -116,7 +114,8 @@ class ChatService:
                         editorial_summary=row.get("editorial_summary"),
                     )
                 )
-            self.places_repo.save_places(user_id, places_to_save, session_id)
+        response.recommended_places = recommended_places
+        response._context = context
 
         self.chat_repo.save_message(
             session_id, "user", message, message_type=classification.message_type
@@ -126,7 +125,7 @@ class ChatService:
             "assistant",
             response.answer,
             message_type=classification.message_type,
-            recommended_places=[p.model_dump() for p in places_to_save],
+            recommended_places=[p.model_dump() for p in recommended_places],
         )
 
         return response
