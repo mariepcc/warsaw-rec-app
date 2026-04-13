@@ -54,7 +54,7 @@ const s = StyleSheet.create({
   ring: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2.5,
+    borderWidth: 1,
     borderColor: "#1a1a1a",
     backgroundColor: "transparent",
     shadowColor: "#000",

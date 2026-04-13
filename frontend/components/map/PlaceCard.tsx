@@ -22,7 +22,7 @@ import type { Place } from "@/api/places";
 const { width: SCREEN_W } = Dimensions.get("window");
 export const CARD_W = SCREEN_W * 0.78;
 export const CARD_GAP = 12;
-export const CARD_H = 195;
+export const CARD_H = 185;
 
 type PlaceWithCoords = Place & { lat: number; lon: number };
 
@@ -58,8 +58,7 @@ export const PlaceCard = memo(({ place }: Props) => {
   }, [place, router]);
 
   const handleNavigate = useCallback(() => {
-    if (place.google_maps_direct_link)
-      Linking.openURL(place.google_maps_direct_link);
+    if (place.maps_url) Linking.openURL(place.maps_url);
     else if (place.maps_url) Linking.openURL(place.maps_url);
   }, [place.google_maps_direct_link, place.maps_url]);
 
@@ -75,44 +74,54 @@ export const PlaceCard = memo(({ place }: Props) => {
           <Ionicons name={icon} size={15} color="#fff" />
         </LinearGradient>
         <View style={{ flex: 1 }}>
-          <Text style={s.name} numberOfLines={2}>
-            {place.name}
+          <View style={s.nameRow}>
+            <Text style={s.name} numberOfLines={1}>
+              {place.name}
+            </Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons
+                name={isFav ? "heart" : "heart-outline"}
+                size={22}
+                color={isFav ? "#E8622A" : "#ccc"}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={s.metaRow}>
+            {place.sub_category && (
+              <Text style={s.sub}>{place.sub_category}</Text>
+            )}
+            <View style={s.dot} />
+            {place.rating != null && (
+              <View style={s.ratingBox}>
+                <Ionicons name="star" size={10} color="#F5A623" />
+                <Text style={s.rating}>{Number(place.rating).toFixed(1)}</Text>
+              </View>
+            )}
+            {pl && (
+              <>
+                <View style={s.dot} />
+                <Text style={[s.price, { color }]}>{pl}</Text>
+              </>
+            )}
+          </View>
+        </View>
+      </View>
+
+      <View style={s.body}>
+        {place.address && (
+          <Text style={s.address} numberOfLines={1}>
+            {place.address.replace(", Warszawa", "")}
           </Text>
-          {place.sub_category && (
-            <Text style={s.sub}>{place.sub_category}</Text>
-          )}
-        </View>
-        <View style={s.topRight}>
-          {place.rating != null && (
-            <View style={s.ratingBox}>
-              <Ionicons name="star" size={11} color="#F5A623" />
-              <Text style={s.rating}>{Number(place.rating).toFixed(1)}</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              toggle();
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={isFav ? "heart" : "heart-outline"}
-              size={20}
-              color={isFav ? "#E8622A" : "#ccc"}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-      {place.address && (
-        <Text style={s.address} numberOfLines={1}>
-          {place.address}
-        </Text>
-      )}
-      <View style={s.footer}>
+        )}
         {place.district && <Text style={s.district}>{place.district}</Text>}
-        {pl && <Text style={[s.price, { color }]}>{pl}</Text>}
       </View>
+
       <TouchableOpacity
         style={s.navBtn}
         onPress={(e) => {
@@ -133,58 +142,75 @@ const s = StyleSheet.create({
     height: CARD_H,
     backgroundColor: "#fff",
     borderRadius: 20,
-    padding: 16,
+    padding: 14,
     marginRight: CARD_GAP,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 7,
+    justifyContent: "space-between",
   },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    marginBottom: 6,
   },
   iconBox: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 2,
   },
-  name: { fontSize: 15, fontWeight: "700", color: "#1a1a1a", lineHeight: 20 },
-  sub: { fontSize: 12, color: "#aaa", marginTop: 2 },
-  topRight: { alignItems: "flex-end", gap: 4 },
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    flex: 1,
+    marginRight: 8,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  sub: { fontSize: 12, color: "#888" },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "#ddd",
+    marginHorizontal: 6,
+  },
   ratingBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FFF9EC",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
+    gap: 2,
   },
   rating: { fontSize: 12, fontWeight: "700", color: "#F5A623" },
-  address: { fontSize: 12, color: "#888", marginBottom: 6 },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
+  price: { fontSize: 12, fontWeight: "600" },
+  body: {
+    marginVertical: 2,
   },
-  district: { fontSize: 12, color: "#bbb" },
-  price: { fontSize: 13, fontWeight: "700" },
+  address: { fontSize: 12, color: "#999" },
+  district: { fontSize: 11, color: "#ccc", marginTop: 1 },
   navBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: "#F8F8F8",
     borderWidth: 1,
-    borderColor: "#EBEBEB",
+    borderColor: "#F0F0F0",
   },
-  navText: { color: "#444", fontSize: 14, fontWeight: "600" },
+  navText: { color: "#444", fontSize: 13, fontWeight: "600" },
 });

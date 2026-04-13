@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,14 @@ import {
   TouchableOpacity,
   Linking,
   StyleSheet,
-  Image,
+  Modal,
 } from "react-native";
-import { Stack, useRouter, useNavigation } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
+import MapView, { Marker } from "react-native-maps";
 import { usePlaceStore } from "@/store/placesStore";
 import { useFavourite } from "@/hooks/useFavourite";
 import { Place } from "@/api/places";
@@ -74,6 +75,7 @@ export default function PlaceDetailScreen() {
   const source = usePlaceStore((state) => state.source);
 
   const [hoursVisible, setHoursVisible] = useState(false);
+  const [mapModalVisible, setMapModalVisible] = useState(false);
 
   if (!place) {
     return (
@@ -89,13 +91,22 @@ export default function PlaceDetailScreen() {
     (key) => (place as Record<string, unknown>)[key] === true,
   );
 
+  const hasCoords = place.lat != null && place.lon != null;
+  const region = hasCoords
+    ? {
+        latitude: place.lat as number,
+        longitude: place.lon as number,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }
+    : null;
+
   function formatOpeningHours(jsonString: string) {
     try {
       const hoursData = JSON.parse(jsonString);
       const days = Object.keys(hoursData);
       const currentDay =
         days[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-
       return days.map((day) => {
         const isToday = day === currentDay;
         const timeRanges = hoursData[day];
@@ -103,7 +114,6 @@ export default function PlaceDetailScreen() {
           timeRanges
             .map((range: [string, string]) => range.join(" – "))
             .join(", ") || "Zamknięte";
-
         return (
           <View key={day} style={[s.hourRow, isToday && s.hourRowToday]}>
             <Text style={[s.hourDay, isToday && s.hourDayToday]}>
@@ -115,7 +125,7 @@ export default function PlaceDetailScreen() {
           </View>
         );
       });
-    } catch (e) {
+    } catch {
       return (
         <Text style={s.metaValue}>Niepoprawny format godzin otwarcia</Text>
       );
@@ -136,13 +146,9 @@ export default function PlaceDetailScreen() {
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
           onPress={() => {
-            if (source === "saved") {
-              router.push("/(tabs)/saved");
-            } else if (source === "map") {
-              router.push("/(tabs)/map");
-            } else {
-              router.push("/(tabs)/chat");
-            }
+            if (source === "saved") router.push("/(tabs)/saved");
+            else if (source === "map") router.push("/(tabs)/map");
+            else router.push("/(tabs)/chat");
           }}
           style={s.headerBtn}
         >
@@ -150,9 +156,6 @@ export default function PlaceDetailScreen() {
           <Text style={s.headerBtnText}>Wróć</Text>
         </TouchableOpacity>
         <View style={s.headerActions}>
-          <TouchableOpacity style={s.headerBtnCircle}>
-            <Ionicons name="share-social-outline" size={20} color="#333" />
-          </TouchableOpacity>
           {!favLoading && (
             <TouchableOpacity onPress={toggle} style={s.headerBtnCircle}>
               <Ionicons
@@ -215,17 +218,6 @@ export default function PlaceDetailScreen() {
                 </View>
               </View>
             )}
-            <View style={s.metaRow}>
-              <Ionicons name="location-outline" size={18} color="#66a494" />
-              <View style={s.metaContent}>
-                <Text style={s.metaValue}>
-                  {place.address?.replace(", Warszawa", "")}
-                </Text>
-                <Text style={s.metaLabel}>
-                  ({place.district || "Warszawa"})
-                </Text>
-              </View>
-            </View>
 
             {place.opening_hours && (
               <TouchableOpacity
@@ -258,22 +250,43 @@ export default function PlaceDetailScreen() {
 
         <View style={s.section}>
           <Text style={s.sectionTitle}>Lokalizacja</Text>
-          <View style={s.mapContainer}>
-            <Image
-              source={require("@/assets/images/icon.png")}
-              style={s.mapPlaceholder}
-              resizeMode="cover"
-            />
+          {place.address && (
+            <View style={s.addressBlock}>
+              <Text style={s.addressStreet}>{place.address}</Text>
+              {place.district && (
+                <Text style={s.addressDistrict}>({place.district})</Text>
+              )}
+            </View>
+          )}
+          {hasCoords && region ? (
             <TouchableOpacity
-              style={s.mapExpandBtn}
-              onPress={() =>
-                place.google_maps_direct_link &&
-                Linking.openURL(place.google_maps_direct_link)
-              }
+              style={s.mapWrapper}
+              onPress={() => setMapModalVisible(true)}
+              activeOpacity={0.95}
             >
-              <Ionicons name="navigate-circle-outline" size={22} color="#333" />
+              <View style={s.mapContainer}>
+                <MapView
+                  style={StyleSheet.absoluteFill}
+                  initialRegion={region}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  pointerEvents="none"
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: place.lat as number,
+                      longitude: place.lon as number,
+                    }}
+                  />
+                </MapView>
+              </View>
+              <View style={s.mapExpandBtn}>
+                <Ionicons name="expand-outline" size={18} color="#333" />
+              </View>
             </TouchableOpacity>
-          </View>
+          ) : null}
         </View>
 
         <View style={s.section}>
@@ -304,7 +317,12 @@ export default function PlaceDetailScreen() {
         )}
       </ScrollView>
 
-      <View style={[s.floatingActionBar, { bottom: insets.bottom + 16 }]}>
+      <View
+        style={[
+          s.floatingActionBar,
+          { bottom: Math.max(insets.bottom, 16) + 66 },
+        ]}
+      >
         <BlurView intensity={90} tint="light" style={s.blurContainer}>
           <View style={s.actionRow}>
             <TouchableOpacity
@@ -314,7 +332,6 @@ export default function PlaceDetailScreen() {
               <Ionicons name="navigate" size={20} color="#fff" />
               <Text style={s.primaryActionText}>Trasa</Text>
             </TouchableOpacity>
-
             {place.menu_url && (
               <TouchableOpacity
                 style={s.secondaryActionBtn}
@@ -327,6 +344,52 @@ export default function PlaceDetailScreen() {
           </View>
         </BlurView>
       </View>
+
+      {hasCoords && region && (
+        <Modal
+          visible={mapModalVisible}
+          animationType="slide"
+          presentationStyle="formSheet"
+          onRequestClose={() => setMapModalVisible(false)}
+        >
+          <View style={s.modalContainer}>
+            <View style={s.modalHandle} />
+            <View style={s.modalMapWrapper}>
+              <MapView
+                style={StyleSheet.absoluteFill}
+                initialRegion={region}
+                showsUserLocation
+                showsMyLocationButton={false}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: place.lat as number,
+                    longitude: place.lon as number,
+                  }}
+                  title={place.name}
+                />
+              </MapView>
+            </View>
+            <View
+              style={[
+                s.modalFooter,
+                { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+              ]}
+            >
+              <TouchableOpacity
+                style={s.modalMapsBtn}
+                onPress={() => {
+                  setMapModalVisible(false);
+                  place.maps_url && Linking.openURL(place.maps_url);
+                }}
+              >
+                <Ionicons name="navigate-outline" size={18} color="#555" />
+                <Text style={s.modalMapsBtnText}>Otwórz w Google Maps</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -389,12 +452,6 @@ const s = StyleSheet.create({
     letterSpacing: -1,
     marginTop: 10,
   },
-  placeSub: {
-    fontSize: 15,
-    color: "#888",
-    fontWeight: "400",
-    marginBottom: 10,
-  },
   metaCard: { gap: 16, marginTop: 10 },
   metaRow: { flexDirection: "row", alignItems: "flex-start", gap: 15 },
   metaContent: { flex: 1 },
@@ -429,24 +486,35 @@ const s = StyleSheet.create({
     letterSpacing: 1,
     textTransform: "uppercase",
   },
+  addressLine: {
+    fontSize: 15,
+    color: "#555",
+    fontWeight: "500",
+    marginTop: -4,
+  },
+  addressBlock: { gap: 2, marginTop: -4 },
+  addressStreet: { fontSize: 15, color: "#222", fontWeight: "700" },
+  addressDistrict: { fontSize: 13, color: "#999", fontWeight: "400" },
+  mapWrapper: { position: "relative" },
   mapContainer: {
     height: 180,
-    borderRadius: 24,
+    borderRadius: 18,
     overflow: "hidden",
-    position: "relative",
-    backgroundColor: "#eee",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    margin: 2,
   },
-  mapPlaceholder: { width: "100%", height: "100%" },
   mapExpandBtn: {
     position: "absolute",
-    bottom: 12,
-    right: 12,
-    backgroundColor: "#fff",
+    top: 14,
+    right: 14,
+    backgroundColor: "rgba(255,255,255,0.92)",
     padding: 8,
     borderRadius: 12,
-    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   featuresGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   featureTag: {
@@ -516,30 +584,55 @@ const s = StyleSheet.create({
     lineHeight: 24,
     fontWeight: "400",
   },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  ratingNum: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#111",
-  },
-  ratingCount: {
-    fontSize: 14,
-    color: "#aaa",
-    fontWeight: "400",
-  },
-  subBadge: {
-    backgroundColor: "#f5f5f5",
-    borderColor: "#eee",
-  },
+  subBadge: { backgroundColor: "#f5f5f5", borderColor: "#eee" },
   subBadgeText: {
     fontSize: 11,
     fontWeight: "600",
     color: "#888",
     letterSpacing: 0.5,
   },
+  modalContainer: { flex: 1, backgroundColor: "#fff" },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e0e0e0",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  modalMapWrapper: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: 4,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+  },
+  modalMap: { flex: 1 },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: "#fff",
+  },
+  modalMapsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
+    borderColor: "#e8e8e8",
+  },
+  modalMapsBtnText: { fontSize: 15, fontWeight: "600", color: "#444" },
 });

@@ -32,10 +32,10 @@ export type MapFilter = {
 export const MAP_FILTERS: MapFilter[] = [
   {
     key: "saved",
-    label: "Zapisane",
+    label: "Ulubione",
     icon: "heart-outline",
-    color: "#E8622A",
-    gradientColors: ["#F5934A", "#E8622A"],
+    color: "#860f39",
+    gradientColors: ["#deb2c2", "#9b2c53"],
     lightColor: "#FEF0EA",
   },
   {
@@ -43,7 +43,7 @@ export const MAP_FILTERS: MapFilter[] = [
     label: "Jedzenie",
     icon: "restaurant-outline",
     color: "#E8622A",
-    gradientColors: ["#F5934A", "#E8622A"],
+    gradientColors: ["#f0a963", "#E8622A"],
     lightColor: "#FEF0EA",
   },
   {
@@ -51,7 +51,7 @@ export const MAP_FILTERS: MapFilter[] = [
     label: "Kawa",
     icon: "cafe-outline",
     color: "#7C5CBF",
-    gradientColors: ["#9B7FD4", "#7C5CBF"],
+    gradientColors: ["#baa6e3", "#7C5CBF"],
     lightColor: "#F2EEFB",
   },
   {
@@ -59,7 +59,7 @@ export const MAP_FILTERS: MapFilter[] = [
     label: "Kultura",
     icon: "color-palette-outline",
     color: "#2A8BE8",
-    gradientColors: ["#5AADF5", "#2A8BE8"],
+    gradientColors: ["#99bedd", "#2A8BE8"],
     lightColor: "#EAF2FE",
   },
   {
@@ -67,7 +67,7 @@ export const MAP_FILTERS: MapFilter[] = [
     label: "Nocne",
     icon: "musical-notes-outline",
     color: "#3D3D5C",
-    gradientColors: ["#6B6B9A", "#3D3D5C"],
+    gradientColors: ["#8989ab", "#3D3D5C"],
     lightColor: "#EEEEF5",
   },
   {
@@ -75,7 +75,7 @@ export const MAP_FILTERS: MapFilter[] = [
     label: "Natura",
     icon: "leaf-outline",
     color: "#2A9E6A",
-    gradientColors: ["#4DC48A", "#2A9E6A"],
+    gradientColors: ["#8fcfb0", "#2A9E6A"],
     lightColor: "#EAF7F2",
   },
 ];

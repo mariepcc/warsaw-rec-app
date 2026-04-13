@@ -89,7 +89,6 @@ export default function MapScreen() {
   const [activePrice, setActivePrice] = useState<string | null>(null);
   const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
   const [modal, setModal] = useState<"sub" | "price" | "district" | null>(null);
-  const [favMap, setFavMap] = useState<Map<string, boolean>>(new Map());
   const [locationLoading, setLocationLoading] = useState(false);
 
   const cardsAnim = useRef(new Animated.Value(0)).current;
@@ -106,6 +105,11 @@ export default function MapScreen() {
   const cardsTranslate = cardsAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [CARDS_SLOT + CARDS_BOT + 80, 0],
+  });
+
+  const nearMeOpacity = cardsAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
   });
 
   useEffect(() => {
@@ -151,17 +155,11 @@ export default function MapScreen() {
             lat: p.metadata?.lat ?? p.lat,
             lon: p.metadata?.lon ?? p.lon,
           }));
-        const map = new Map<string, boolean>();
-        data.forEach((p) => map.set(p.id, p.is_favourite ?? true));
-        setFavMap(map);
       } else {
         const raw = await getAllPlaces();
         data = (raw as any[]).filter(
           (p) => p.lat && p.lon && p.main_category === filter,
         );
-        const map = new Map<string, boolean>();
-        data.forEach((p) => map.set(p.id, p.is_favourite ?? false));
-        setFavMap(map);
       }
       const origin = userCoords ?? { latitude: 52.2297, longitude: 21.0122 };
       const sorted = [...data].sort(
@@ -308,7 +306,7 @@ export default function MapScreen() {
   );
 
   const keyExtractor = useCallback(
-    (item: PlaceWithCoords, i: number) => `card-${item.name}-${i}`,
+    (item: PlaceWithCoords) => `card-${item.id}`,
     [],
   );
 
@@ -415,7 +413,7 @@ export default function MapScreen() {
 
       <Animated.View
         style={[
-          s.controls,
+          s.controlsRow,
           {
             bottom: CARDS_BOT,
             transform: [
@@ -429,18 +427,31 @@ export default function MapScreen() {
           },
         ]}
       >
-        <TouchableOpacity style={s.nearMe} onPress={goToMyLocation}>
-          <BlurView intensity={80} tint="light" style={s.nearMeBlur}>
-            {locationLoading ? (
-              <ActivityIndicator size="small" color="#1a1a1a" />
-            ) : (
-              <>
-                <Ionicons name="navigate" size={15} color="#1a1a1a" />
-                <Text style={s.nearMeTxt}>Near me</Text>
-              </>
-            )}
-          </BlurView>
-        </TouchableOpacity>
+        <Animated.View
+          style={{ opacity: nearMeOpacity }}
+          pointerEvents={cardsOpen ? "none" : "auto"}
+        >
+          <TouchableOpacity style={s.nearMe} onPress={goToMyLocation}>
+            <BlurView intensity={80} tint="light" style={s.nearMeBlur}>
+              {locationLoading ? (
+                <ActivityIndicator size="small" color="#1a1a1a" />
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={15} color="#1a1a1a" />
+                  <Text style={s.nearMeTxt}>Near me</Text>
+                </>
+              )}
+            </BlurView>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {cardsOpen && (
+          <TouchableOpacity style={s.closeBtn} onPress={closeCards}>
+            <BlurView intensity={80} tint="light" style={s.closeBtnInner}>
+              <Ionicons name="close" size={20} color="#111" />
+            </BlurView>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       <Animated.View
@@ -450,11 +461,6 @@ export default function MapScreen() {
         ]}
         pointerEvents={cardsOpen ? "box-none" : "none"}
       >
-        <TouchableOpacity style={s.closeBtn} onPress={closeCards}>
-          <BlurView intensity={70} tint="light" style={s.closeBtnInner}>
-            <Ionicons name="close" size={18} color="#333" />
-          </BlurView>
-        </TouchableOpacity>
         <FlatList
           ref={listRef}
           data={cardPlaces}
@@ -472,6 +478,7 @@ export default function MapScreen() {
           maxToRenderPerBatch={3}
           initialNumToRender={3}
           removeClippedSubviews
+          extraData={selectedName}
         />
       </Animated.View>
 
@@ -555,16 +562,17 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   loadingTxt: { fontSize: 14, color: "#555" },
-  controls: { position: "absolute", left: 16, right: 16 },
-  nearMe: {
+  controlsRow: {
+    position: "absolute",
+    left: 16,
+    right: 16,
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
+    zIndex: 110,
+  },
+  nearMe: {
     backgroundColor: "transparent",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -584,15 +592,21 @@ const s = StyleSheet.create({
   },
   nearMeTxt: { fontSize: 15, fontWeight: "600", color: "#1a1a1a" },
   cardsWrap: { position: "absolute", left: 0, right: 0, zIndex: 100 },
-  closeBtn: { alignSelf: "center", marginBottom: 12 },
+  closeBtn: {
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
   closeBtnInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
     borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: "rgba(255,255,255,0.3)",
   },
 });
