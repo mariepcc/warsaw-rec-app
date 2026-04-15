@@ -33,6 +33,7 @@ import MapFilterBar, {
   DISTRICTS,
   MapFilterKey,
 } from "@/components/map/FilterBar";
+import { FilterResultPopup } from "@/components/map/FilterResultPopup";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -90,6 +91,26 @@ export default function MapScreen() {
   const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
   const [modal, setModal] = useState<"sub" | "price" | "district" | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [filterPopupVisible, setFilterPopupVisible] = useState(false);
+  const [filterPopupCount, setFilterPopupCount] = useState(0);
+  const filterPopupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // wywołaj popup przy zmianie filtrów
+  useEffect(() => {
+    if (!searchText) return; // nie pokazuj przy inicjalnym ładowaniu
+
+    setFilterPopupCount(displayPlaces.length);
+    setFilterPopupVisible(true);
+
+    if (filterPopupTimer.current) clearTimeout(filterPopupTimer.current);
+    filterPopupTimer.current = setTimeout(() => {
+      setFilterPopupVisible(false);
+    }, 2500);
+
+    return () => {
+      if (filterPopupTimer.current) clearTimeout(filterPopupTimer.current);
+    };
+  }, [activeSub, activePrice, activeDistrict, searchText]);
 
   const cardsAnim = useRef(new Animated.Value(0)).current;
 
@@ -412,6 +433,7 @@ export default function MapScreen() {
 
       <View style={[s.popupWrap, { top: POPUP_TOP }]} pointerEvents="none">
         <CountPopup count={popupCount} trigger={popupTrigger} />
+        {filterPopupVisible && <FilterResultPopup count={filterPopupCount} />}
       </View>
 
       {loading && (
