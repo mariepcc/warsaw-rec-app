@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from dependencies import get_current_user
 from schemas.chat import ChatRequest, ChatResponse
 from schemas.places import PlaceResponse
 from services.chat_service import ChatService
+from database.chat_repository import ChatRepository
+from config.settings import get_settings
 import uuid
 import traceback
 
 
 router = APIRouter()
+settings = get_settings()
+chat_repo = ChatRepository(settings.database.service_url)
 chat_service = ChatService()
 
 
@@ -77,4 +81,24 @@ async def send_message(
         )
     except Exception:
         traceback.print_exc()
-        raise
+        raise HTTPException(status_code=500, detail="Błąd serwera")
+
+
+@router.get("/all-names")
+async def get_all_names(user: dict = Depends(get_current_user)):
+    try:
+        names = chat_repo.get_all_recommended_names(user["user_id"])
+        return {"names": names}
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Błąd serwera")
+
+
+@router.get("/search-history")
+async def search_history(q: str, user: dict = Depends(get_current_user)):
+    try:
+        results = chat_repo.search_sessions(user_id=user["user_id"], search_query=q)
+        return results
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Błąd serwera")

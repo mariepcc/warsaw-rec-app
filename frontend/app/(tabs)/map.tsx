@@ -319,8 +319,8 @@ export default function MapScreen() {
         style={StyleSheet.absoluteFillObject}
         initialRegion={WARSAW}
         cameraZoomRange={{
-          minCenterCoordinateDistance: 500, // max zoom in
-          maxCenterCoordinateDistance: 50000, // max zoom out (ogranicz oddalanie)
+          minCenterCoordinateDistance: 500,
+          maxCenterCoordinateDistance: 50000,
           animated: true,
         }}
         showsUserLocation={false}

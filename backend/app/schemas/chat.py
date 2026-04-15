@@ -1,6 +1,7 @@
 from schemas.places import PlaceResponse
 from typing import Any, List, Optional, Literal
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class ChatRequest(BaseModel):
@@ -55,3 +56,9 @@ class SynthesizedResponse(BaseModel):
         description="Nazwy poleconych miejsc (do zapisu w historii)",
     )
     _context: Any = None
+
+
+class ChatSessionSearchResponse(BaseModel):
+    id: str
+    created_at: datetime
+    first_message: Optional[str] = None
