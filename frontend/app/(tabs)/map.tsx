@@ -43,7 +43,7 @@ const WARSAW: Region = {
   longitudeDelta: 0.06,
 };
 const MIN_DELTA = 0.001;
-const MAX_DELTA = 0.3;
+const MAX_DELTA = 0.08;
 const TIGHT_DELTA = 0.003;
 
 type PlaceWithCoords = Place & { lat: number; lon: number };
@@ -147,9 +147,11 @@ export default function MapScreen() {
       if (filter === "saved") {
         const raw = await getFavouritePlaces();
         data = (raw as any[])
-          .filter(
-            (p) => (p.lat || p.metadata?.lat) && (p.lon || p.metadata?.lon),
-          )
+          .filter((p) => {
+            const lat = p.metadata?.lat ?? p.lat;
+            const lon = p.metadata?.lon ?? p.lon;
+            return lat != null && lon != null;
+          })
           .map((p) => ({
             ...p,
             lat: p.metadata?.lat ?? p.lat,
@@ -316,6 +318,11 @@ export default function MapScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         initialRegion={WARSAW}
+        cameraZoomRange={{
+          minCenterCoordinateDistance: 500, // max zoom in
+          maxCenterCoordinateDistance: 50000, // max zoom out (ogranicz oddalanie)
+          animated: true,
+        }}
         showsUserLocation={false}
         showsMyLocationButton={false}
         mapType="standard"
@@ -341,19 +348,22 @@ export default function MapScreen() {
             stylers: [{ visibility: "off" }],
           },
         ]}
-        radius={45}
         maxZoom={14}
+        radius={45}
         minPoints={2}
         renderCluster={(cluster: any) => {
           const { id, geometry, onPress, properties } = cluster;
+
+          const lon = geometry?.coordinates?.[0];
+          const lat = geometry?.coordinates?.[1];
+          if (lat == null || lon == null) return null;
+          if (!properties) return null;
+          if (properties.point_count == null) return null;
           return (
             <Marker
               key={`c-${id}`}
-              coordinate={{
-                longitude: geometry.coordinates[0],
-                latitude: geometry.coordinates[1],
-              }}
-              onPress={onPress}
+              coordinate={{ longitude: lon, latitude: lat }}
+              onPress={onPress ?? undefined}
               tracksViewChanges={false}
             >
               <View style={s.cluster}>
@@ -363,24 +373,26 @@ export default function MapScreen() {
           );
         }}
       >
-        {displayPlaces.map((place) => {
-          const isSelected = place.name === selectedName;
-          return (
-            <Marker
-              key={`${place.name}-${isSelected}`}
-              coordinate={{ latitude: place.lat, longitude: place.lon }}
-              onPress={() => handleMarkerPress(place)}
-              tracksViewChanges={isSelected}
-              anchor={{ x: 0.5, y: 1 }}
-              zIndex={isSelected ? 999 : 10}
-            >
-              <CategoryPin
-                category={place.main_category ?? ""}
-                selected={isSelected}
-              />
-            </Marker>
-          );
-        })}
+        {displayPlaces
+          .filter((place) => place.lat != null && place.lon != null)
+          .map((place) => {
+            const isSelected = place.name === selectedName;
+            return (
+              <Marker
+                key={`${place.name}-${isSelected}`}
+                coordinate={{ latitude: place.lat, longitude: place.lon }}
+                onPress={() => handleMarkerPress(place)}
+                tracksViewChanges={isSelected}
+                anchor={{ x: 0.5, y: 1 }}
+                zIndex={isSelected ? 999 : 10}
+              >
+                <CategoryPin
+                  category={place.main_category ?? ""}
+                  selected={isSelected}
+                />
+              </Marker>
+            );
+          })}
         {userCoords && <PulsingDot coordinate={userCoords} />}
       </MapViewClustering>
 
