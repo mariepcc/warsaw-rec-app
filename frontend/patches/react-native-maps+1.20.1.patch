@@ -1,0 +1,62 @@
+diff --git a/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.m b/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.m
+index a1ffe69..43b0b0a 100644
+--- a/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.m
++++ b/node_modules/react-native-maps/ios/AirGoogleMaps/AIRGoogleMap.m
+@@ -188,7 +188,12 @@ id regionAsJSON(MKCoordinateRegion region) {
+       [self insertReactSubview:(UIView *)childSubviews[i] atIndex:atIndex];
+     }
+   }
+-  [_reactSubviews insertObject:(UIView *)subview atIndex:(NSUInteger) atIndex];
++  if (subview != nil) {
++    NSUInteger safeIndex = MIN((NSUInteger)atIndex, [_reactSubviews count]);
++    [_reactSubviews insertObject:(UIView *)subview atIndex:safeIndex];
++  } else {
++    NSLog(@"[AIRGoogleMap] Warning: Attempted to insert nil subview at index %ld", (long)atIndex);
++  }
+ }
+ #pragma clang diagnostic pop
+ 
+@@ -236,7 +241,11 @@ id regionAsJSON(MKCoordinateRegion region) {
+       [self removeReactSubview:(UIView *)childSubviews[i]];
+     }
+   }
+-  [_reactSubviews removeObject:(UIView *)subview];
++  if (subview != nil) {
++    [_reactSubviews removeObject:(UIView *)subview];
++  } else {
++    NSLog(@"[AIRGoogleMap] Warning: Attempted to remove nil subview");
++  }
+ }
+ #pragma clang diagnostic pop
+ 
+diff --git a/node_modules/react-native-maps/ios/AirMaps/AIRMap.m b/node_modules/react-native-maps/ios/AirMaps/AIRMap.m
+index 07a4638..24b8fbf 100644
+--- a/node_modules/react-native-maps/ios/AirMaps/AIRMap.m
++++ b/node_modules/react-native-maps/ios/AirMaps/AIRMap.m
+@@ -135,7 +135,12 @@ const NSInteger AIRMapMaxZoomLevel = 20;
+             [self insertReactSubview:(UIView *)childSubviews[i] atIndex:atIndex];
+         }
+     }
+-    [_reactSubviews insertObject:(UIView *)subview atIndex:(NSUInteger) atIndex];
++    if (subview != nil) {
++        NSUInteger safeIndex = MIN((NSUInteger)atIndex, [_reactSubviews count]);
++        [_reactSubviews insertObject:(UIView *)subview atIndex:safeIndex];
++    } else {
++        NSLog(@"[AIRGoogleMap] Warning: Attempted to insert nil subview at index %ld", (long)atIndex);
++    }
+ }
+ #pragma clang diagnostic pop
+ 
+@@ -166,7 +171,11 @@ const NSInteger AIRMapMaxZoomLevel = 20;
+             [self removeReactSubview:(UIView *)childSubviews[i]];
+         }
+     }
+-    [_reactSubviews removeObject:(UIView *)subview];
++    if (subview != nil) {
++        [_reactSubviews removeObject:(UIView *)subview];
++    } else {
++    NSLog(@"[AIRGoogleMap] Warning: Attempted to remove nil subview");
++    }
+ }
+ #pragma clang diagnostic pop
+ 

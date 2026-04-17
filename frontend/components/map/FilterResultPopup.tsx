@@ -24,11 +24,11 @@ export const FilterResultPopup = memo(({ count }: Props) => {
   return (
     <Animated.View style={[s.wrap, { opacity, transform: [{ scale }] }]}>
       <BlurView intensity={72} tint="light" style={s.blur}>
-        <Ionicons name="filter" size={14} color="#555" />
-        <Text style={s.text}>
+        <Text style={s.count}>{count}</Text>
+        <Text style={s.label}>
           {count === 0
             ? "Brak wyników"
-            : `${count} ${count === 1 ? "miejsce" : count < 5 ? "miejsca" : "miejsc"}`}
+            : `${count === 1 ? "miejsce" : count < 5 ? "miejsca" : "miejsc"}`}
         </Text>
       </BlurView>
     </Animated.View>
@@ -36,17 +36,18 @@ export const FilterResultPopup = memo(({ count }: Props) => {
 });
 
 const s = StyleSheet.create({
-  wrap: { alignSelf: "center", marginTop: 8 },
+  wrap: { alignSelf: "center" },
   blur: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
+    alignItems: "baseline",
+    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 13,
+    borderRadius: 32,
     overflow: "hidden",
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.07)",
   },
-  text: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
+  count: { fontSize: 28, fontWeight: "800", color: "#1a1a1a" },
+  label: { fontSize: 15, color: "#777", fontWeight: "500" },
 });

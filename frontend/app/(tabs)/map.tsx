@@ -20,6 +20,8 @@ import type { Place } from "@/api/places";
 import { PulsingDot } from "@/components/map/PulsingDot";
 import { CategoryPin } from "@/components/map/CategoryPin";
 import { CountPopup } from "@/components/map/CountPopup";
+import { FilterResultPopup } from "@/components/map/FilterResultPopup";
+
 import {
   PlaceCard,
   CARD_W,
@@ -33,7 +35,6 @@ import MapFilterBar, {
   DISTRICTS,
   MapFilterKey,
 } from "@/components/map/FilterBar";
-import { FilterResultPopup } from "@/components/map/FilterResultPopup";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -94,13 +95,13 @@ export default function MapScreen() {
   const [filterPopupVisible, setFilterPopupVisible] = useState(false);
   const [filterPopupCount, setFilterPopupCount] = useState(0);
   const filterPopupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isResettingFilters = useRef(false);
 
-  // wywołaj popup przy zmianie filtrów
   useEffect(() => {
-    if (!searchText) return; // nie pokazuj przy inicjalnym ładowaniu
-
+    if (isResettingFilters.current) return;
     setFilterPopupCount(displayPlaces.length);
     setFilterPopupVisible(true);
+    console.log(activeSub);
 
     if (filterPopupTimer.current) clearTimeout(filterPopupTimer.current);
     filterPopupTimer.current = setTimeout(() => {
@@ -156,6 +157,7 @@ export default function MapScreen() {
 
   async function loadPlaces(filter: MapFilterKey) {
     setLoading(true);
+    isResettingFilters.current = true;
     setCardsOpen(false);
     setSelectedName(null);
     setCardPlaces([]);
@@ -163,6 +165,9 @@ export default function MapScreen() {
     setActiveSub(null);
     setActivePrice(null);
     setActiveDistrict(null);
+    requestAnimationFrame(() => {
+      isResettingFilters.current = false;
+    });
     try {
       let data: PlaceWithCoords[] = [];
       if (filter === "saved") {
