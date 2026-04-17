@@ -96,12 +96,16 @@ export default function MapScreen() {
   const [filterPopupCount, setFilterPopupCount] = useState(0);
   const filterPopupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isResettingFilters = useRef(false);
+  const isFirstFilterRender = useRef(true);
 
   useEffect(() => {
+    if (isFirstFilterRender.current) {
+      isFirstFilterRender.current = false;
+      return;
+    }
     if (isResettingFilters.current) return;
     setFilterPopupCount(displayPlaces.length);
     setFilterPopupVisible(true);
-    console.log(activeSub);
 
     if (filterPopupTimer.current) clearTimeout(filterPopupTimer.current);
     filterPopupTimer.current = setTimeout(() => {
@@ -227,6 +231,11 @@ export default function MapScreen() {
     [basePlaces, searchText, activeSub, activePrice, activeDistrict],
   );
 
+  const spreadPlaces = React.useMemo(
+    () => spreadOverlapping(displayPlaces),
+    [displayPlaces],
+  );
+
   function handleRegionChangeComplete(r: Region) {
     currentDeltaRef.current = r.latitudeDelta;
     let { latitudeDelta: ld, longitudeDelta: lnd } = r;
@@ -250,6 +259,62 @@ export default function MapScreen() {
       );
   }
 
+  function spreadOverlapping(places: PlaceWithCoords[]) {
+    const SPREAD_THRESHOLD = 0.0003;
+
+    const used = new Array(places.length).fill(false);
+    const groups: number[][] = [];
+
+    for (let i = 0; i < places.length; i++) {
+      if (used[i]) continue;
+      const group = [i];
+      used[i] = true;
+      for (let j = i + 1; j < places.length; j++) {
+        if (used[j]) continue;
+        const dist = Math.sqrt(
+          Math.pow(places[i].lat - places[j].lat, 2) +
+            Math.pow(places[i].lon - places[j].lon, 2),
+        );
+        if (dist < SPREAD_THRESHOLD) {
+          group.push(j);
+          used[j] = true;
+        }
+      }
+      groups.push(group);
+    }
+
+    const result: (PlaceWithCoords & {
+      displayLat: number;
+      displayLon: number;
+    })[] = [];
+
+    groups.forEach((indices) => {
+      if (indices.length === 1) {
+        const p = places[indices[0]];
+        result.push({ ...p, displayLat: p.lat, displayLon: p.lon });
+        return;
+      }
+
+      const centerLat =
+        indices.reduce((sum, i) => sum + places[i].lat, 0) / indices.length;
+      const centerLon =
+        indices.reduce((sum, i) => sum + places[i].lon, 0) / indices.length;
+
+      const radius = 0.00035 + indices.length * 0.00008;
+
+      indices.forEach((i, idx) => {
+        const angle = (2 * Math.PI * idx) / indices.length - Math.PI / 2;
+        result.push({
+          ...places[i],
+          displayLat: centerLat + radius * Math.cos(angle),
+          displayLon: centerLon + radius * Math.sin(angle),
+        });
+      });
+    });
+
+    return result;
+  }
+
   function zoomToPin(lat: number, lon: number) {
     mapRef.current?.animateToRegion(
       {
@@ -262,13 +327,15 @@ export default function MapScreen() {
     );
   }
 
-  function handleMarkerPress(place: PlaceWithCoords) {
+  function handleMarkerPress(
+    place: PlaceWithCoords & { displayLat: number; displayLon: number },
+  ) {
     const resorted = [...displayPlaces].sort((a, b) => {
       if (a.name === place.name) return -1;
       if (b.name === place.name) return 1;
       return (
-        haverDist(place.lat, place.lon, a.lat, a.lon) -
-        haverDist(place.lat, place.lon, b.lat, b.lon)
+        haverDist(place.displayLat, place.displayLon, a.lat, a.lon) -
+        haverDist(place.displayLat, place.displayLon, b.lat, b.lon)
       );
     });
     setCardPlaces(resorted);
@@ -399,14 +466,17 @@ export default function MapScreen() {
           );
         }}
       >
-        {displayPlaces
+        {spreadPlaces
           .filter((place) => place.lat != null && place.lon != null)
           .map((place) => {
             const isSelected = place.name === selectedName;
             return (
               <Marker
                 key={`${place.name}-${isSelected}`}
-                coordinate={{ latitude: place.lat, longitude: place.lon }}
+                coordinate={{
+                  latitude: place.displayLat,
+                  longitude: place.displayLon,
+                }}
                 onPress={() => handleMarkerPress(place)}
                 tracksViewChanges={isSelected}
                 anchor={{ x: 0.5, y: 1 }}
