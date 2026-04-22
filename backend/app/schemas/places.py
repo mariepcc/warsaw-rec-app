@@ -88,3 +88,40 @@ class SavedPlaceResponse(BaseModel):
     is_favourite: bool
     session_id: Optional[str] = None
     created_at: datetime
+
+
+class ToggleFavouriteRequest(BaseModel):
+    id: Optional[str] = None
+    name: str
+    address: Optional[str] = None
+    district: Optional[str] = None
+    rating: Optional[float] = None
+    user_rating_count: Optional[int] = None
+    price_level: Optional[str] = None
+    maps_url: Optional[str] = None
+    menu_url: Optional[str] = None
+    main_category: Optional[str] = None
+    sub_category: Optional[str] = None
+    editorial_summary: Optional[str] = None
+    opening_hours: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    google_maps_direct_link: Optional[str] = None
+    serves_vegetarian: Optional[bool] = None
+    serves_coffee: Optional[bool] = None
+    serves_beer: Optional[bool] = None
+    serves_wine: Optional[bool] = None
+    serves_cocktails: Optional[bool] = None
+    serves_breakfast: Optional[bool] = None
+    serves_lunch: Optional[bool] = None
+    serves_dinner: Optional[bool] = None
+    serves_dessert: Optional[bool] = None
+    outdoor_seating: Optional[bool] = None
+    live_music: Optional[bool] = None
+    good_for_groups: Optional[bool] = None
+    menu_for_children: Optional[bool] = None
+    takeout: Optional[bool] = None
+    dine_in: Optional[bool] = None
+    reservable: Optional[bool] = None
+    price_range_start: Optional[float] = None
+    price_range_end: Optional[float] = None

@@ -92,6 +92,16 @@ class ChatRepository:
             with conn.cursor() as cur:
                 cur.execute(
                     """
+                    SELECT 1 FROM chat_sessions
+                    WHERE id = %s AND user_id = %s
+                    """,
+                    (session_id, user_id),
+                )
+                if cur.fetchone() is None:
+                    raise PermissionError("Brak dostępu do sesji")
+
+                cur.execute(
+                    """
                     DELETE FROM chat_messages
                     WHERE session_id = %s
                     """,
@@ -226,3 +236,15 @@ class ChatRepository:
                 )
                 rows = cur.fetchall()
         return [dict(row) for row in rows]
+
+    def session_belongs_to_user(self, session_id: str, user_id: str) -> bool:
+        with self._get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT 1 FROM chat_sessions
+                    WHERE id = %s AND user_id = %s
+                    """,
+                    (session_id, user_id),
+                )
+                return cur.fetchone() is not None

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
-import traceback
 import uuid
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from dependencies import get_current_user
 from schemas.session import MessageResponse, SessionResponse
@@ -10,6 +10,7 @@ from config.settings import get_settings
 router = APIRouter()
 settings = get_settings()
 repo = ChatRepository(settings.database.service_url)
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=list[SessionResponse])
@@ -27,8 +28,13 @@ async def get_sessions(user: dict = Depends(get_current_user)):
 
 
 @router.get("/{session_id}/messages", response_model=list[MessageResponse])
-async def get_session_messages(session_id: str):
+async def get_session_messages(
+    session_id: str,
+    user: dict = Depends(get_current_user),
+):
     try:
+        if not repo.session_belongs_to_user(session_id, user["user_id"]):
+            raise HTTPException(status_code=403, detail="Brak dostępu")
         messages = repo.get_history(session_id)
         return [
             MessageResponse(
@@ -41,9 +47,11 @@ async def get_session_messages(session_id: str):
             )
             for m in messages
         ]
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"BŁĄD POBIERANIA HISTORII: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"get_session_messages error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Wystąpił błąd serwera")
 
 
 @router.delete("/{session_id}")
@@ -54,6 +62,8 @@ async def delete_session(
     try:
         repo.delete_session(session_id, user["user_id"])
         return {"success": True}
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Brak dostępu")
     except Exception:
-        traceback.print_exc()
-        raise
+        logger.error("delete_session error", exc_info=True)
+        raise HTTPException(status_code=500, detail="Wystąpił błąd serwera")

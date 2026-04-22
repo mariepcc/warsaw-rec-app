@@ -30,18 +30,14 @@ class OpenAISettings(LLMSettings):
     """OpenAI-specific settings extending LLMSettings."""
 
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    default_model: str = Field(default="gpt-4o")
+    default_model: str = Field(default="gpt-5.4-mini ")
     embedding_model: str = Field(default="text-embedding-3-small")
 
 
 class DatabaseSettings(BaseModel):
     """Database connection settings."""
 
-    service_url: str = Field(
-        default_factory=lambda: (
-            "postgres://postgres:password@localhost:5432/warsaw_places"
-        )
-    )
+    service_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL"))
 
 
 class VectorStoreSettings(BaseModel):
@@ -52,12 +48,23 @@ class VectorStoreSettings(BaseModel):
     time_partition_interval: timedelta = timedelta(days=7)
 
 
+class CognitoSettings(BaseModel):
+    cognito_region: str = Field(default_factory=lambda: os.getenv("COGNITO_REGION"))
+    cognito_user_pool_id: str = Field(
+        default_factory=lambda: os.getenv("COGNITO_USER_POOL_ID")
+    )
+    cognito_app_client_id: str = Field(
+        default_factory=lambda: os.getenv("COGNITO_APP_CLIENT_ID")
+    )
+
+
 class Settings(BaseModel):
     """Main settings class combining all sub-settings."""
 
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     vector_store: VectorStoreSettings = Field(default_factory=VectorStoreSettings)
+    cognito: CognitoSettings = Field(default_factory=CognitoSettings)
 
 
 @lru_cache()

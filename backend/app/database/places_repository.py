@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import List
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from schemas.places import SavedPlaceResponse
@@ -114,7 +114,6 @@ class PlacesRepository:
     def get_favourite_places(
         self,
         user_id: str,
-        category: Optional[str] = None,
     ) -> List[SavedPlaceResponse]:
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -138,7 +137,6 @@ class PlacesRepository:
                         editorial_summary,
                         created_at,
                         metadata->>'opening_hours' as opening_hours,
-                        metadata->>'website' as website,
                         metadata->>'google_maps_direct_link' as google_maps_direct_link,
                         metadata->>'menu_url' as menu_url,
                         (metadata->>'lat')::float as lat,
@@ -164,12 +162,8 @@ class PlacesRepository:
                     FROM saved_places
                     WHERE user_id = %s AND is_favourite = TRUE
                 """
-                params = [user_id]
-                if category:
-                    query += " AND main_category = %s"
-                    params.append(category)
                 query += " ORDER BY created_at DESC"
-                cur.execute(query, params)
+                cur.execute(query, (user_id,))
                 rows = cur.fetchall()
                 return [dict(row) for row in rows]
 

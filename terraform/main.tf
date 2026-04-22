@@ -1,0 +1,82 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  backend "s3" {
+    bucket = "goexplore-terraform-state"
+    key    = "prod/terraform.tfstate"
+    region = "eu-north-1"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+module "networking" {
+  source = "./modules/networking"
+}
+
+module "ecr" {
+  source          = "./modules/ecr"
+  repository_name = var.app_name
+  tags = {
+    Environment = var.environment
+    Project     = var.app_name
+  }
+}
+
+module "cognito" {
+  source       = "./modules/cognito"
+  project_name = var.app_name
+  environment  = var.environment
+}
+
+module "rds" {
+  source      = "./modules/rds"
+  vpc_id      = module.networking.vpc_id
+  subnet_ids  = module.networking.public_subnet_ids
+  db_password = var.db_password
+}
+
+module "dns" {
+  source      = "./modules/dns"
+  domain_name = var.domain_name
+}
+
+module "ssl" {
+  source      = "./modules/ssl"
+  domain_name = var.domain_name
+  zone_id     = module.dns.zone_id
+}
+
+module "alb" {
+  source          = "./modules/alb"
+  vpc_id          = module.networking.vpc_id
+  subnet_ids      = module.networking.public_subnet_ids
+  certificate_arn = module.ssl.certificate_arn
+}
+
+module "dns_records" {
+  source       = "./modules/dns_records"
+  zone_id      = module.dns.zone_id
+  domain_name  = var.domain_name
+  alb_dns_name = module.alb.alb_dns_name
+  alb_zone_id  = module.alb.alb_zone_id
+}
+
+module "ecs" {
+  source                 = "./modules/ecs"
+  vpc_id                 = module.networking.vpc_id
+  subnet_ids             = module.networking.public_subnet_ids
+  app_image              = "${module.ecr.repository_url}:latest"
+  cognito_user_pool_id   = module.cognito.user_pool_id
+  cognito_app_client_id  = module.cognito.app_client_id
+  database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/goexplore"
+  alb_security_group_id  = module.alb.alb_security_group_id
+  target_group_arn       = module.alb.target_group_arn
+  alb_https_listener_arn = module.alb.alb_listener_https_arn
+}
