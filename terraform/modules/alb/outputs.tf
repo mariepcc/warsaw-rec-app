@@ -1,6 +1,6 @@
 output "alb_dns_name" {
   value       = aws_lb.main.dns_name
-  description = "Adres ALB np. goexplore-alb.eu-north-1.elb.amazonaws.com"
+  description = "Adres ALB np. spotguide-alb.eu-north-1.elb.amazonaws.com"
 }
 
 output "target_group_arn" {

@@ -215,7 +215,7 @@ export default function RegisterScreen() {
           </LinearGradient>
         </View>
 
-        <Text style={s.appName}>GoExplore</Text>
+        <Text style={s.appName}>SpotGuide</Text>
         <Text style={s.headline}>Utwórz konto</Text>
         <Text style={s.sub}>Odkryj najlepsze miejsca w Warszawie</Text>
 

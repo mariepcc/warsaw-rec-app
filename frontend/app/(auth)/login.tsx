@@ -90,7 +90,7 @@ export default function LoginScreen() {
           </LinearGradient>
         </View>
 
-        <Text style={s.appName}>GoExplore</Text>
+        <Text style={s.appName}>SpotGuide</Text>
         <Text style={s.headline}>Witaj z powrotem</Text>
         <Text style={s.sub}>Zaloguj się, żeby odkrywać Warszawę</Text>
 

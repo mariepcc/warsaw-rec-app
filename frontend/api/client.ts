@@ -1,9 +1,9 @@
 import axios from "axios";
 import { fetchAuthSession } from "aws-amplify/auth";
+import Constants from "expo-constants";
 
-// 10.55.15.36 lub 192.168.0.231 lub 192.168.1.17
 const apiClient = axios.create({
-  baseURL: "http://192.168.0.231:8000",
+  baseURL: Constants.expoConfig?.extra?.apiUrl,
   timeout: 30000,
 });
 

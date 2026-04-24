@@ -1,6 +1,5 @@
-# Security group — ALB przyjmuje ruch z internetu na port 80 i 443
 resource "aws_security_group" "alb" {
-  name   = "goexplore-alb-sg"
+  name   = "spotguide-alb-sg"
   vpc_id = var.vpc_id
 
   ingress {
@@ -25,29 +24,26 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# Sam Load Balancer — publiczny, w dwóch subnetach
 resource "aws_lb" "main" {
-  name               = "goexplore-alb"
+  name               = "spotguide-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.subnet_ids
 
   tags = {
-    Name = "goexplore-alb"
+    Name = "spotguide-alb"
   }
 }
 
-# Target group — tu ALB przekazuje ruch do kontenerów ECS
 resource "aws_lb_target_group" "api" {
-  name        = "goexplore-api-tg"
+  name        = "spotguide-api-tg"
   port        = 8000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
-  target_type = "ip"   # ← "ip" bo ECS Fargate nie używa instancji EC2
-
+  target_type = "ip"  
   health_check {
-    path                = "/health"   # ← Twoja aplikacja musi mieć ten endpoint
+    path                = "/health"  
     healthy_threshold   = 2
     unhealthy_threshold = 3
     timeout             = 5
@@ -56,7 +52,6 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
-# Listener HTTP (port 80) — przekierowuje wszystko na HTTPS
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80

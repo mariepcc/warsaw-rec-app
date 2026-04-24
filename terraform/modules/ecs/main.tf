@@ -1,9 +1,9 @@
 resource "aws_ecs_cluster" "main" {
-  name = "goexplore-cluster"
+  name = "spotguide-cluster"
 }
 
 resource "aws_iam_role" "ecs_execution" {
-  name = "goexplore-ecs-execution-role"
+  name = "spotguide-ecs-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -21,7 +21,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
 }
 
 resource "aws_security_group" "ecs" {
-  name   = "goexplore-ecs-sg"
+  name   = "spotguide-ecs-sg"
   vpc_id = var.vpc_id
 
   ingress {
@@ -40,12 +40,12 @@ resource "aws_security_group" "ecs" {
 }
 
 resource "aws_cloudwatch_log_group" "api" {
-  name              = "/ecs/goexplore-api"
+  name              = "/ecs/spotguide-api"
   retention_in_days = 7  # krótkie retention = taniej
 }
 
 resource "aws_ecs_task_definition" "api" {
-  family                   = "goexplore-api"
+  family                   = "spotguide-api"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
@@ -53,7 +53,7 @@ resource "aws_ecs_task_definition" "api" {
   execution_role_arn       = aws_iam_role.ecs_execution.arn
 
   container_definitions = jsonencode([{
-    name  = "goexplore-api"
+    name  = "spotguide-api"
     image = var.app_image
 
     portMappings = [{
@@ -71,7 +71,7 @@ resource "aws_ecs_task_definition" "api" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/goexplore-api"
+        "awslogs-group"         = "/ecs/spotguide-api"
         "awslogs-region"        = "eu-north-1"
         "awslogs-stream-prefix" = "ecs"
       }
@@ -80,7 +80,7 @@ resource "aws_ecs_task_definition" "api" {
 }
 
 resource "aws_ecs_service" "api" {
-  name            = "goexplore-api"
+  name            = "spotguide-api"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = 1
@@ -94,7 +94,7 @@ resource "aws_ecs_service" "api" {
 
   load_balancer {
     target_group_arn = var.target_group_arn
-    container_name   = "goexplore-api"
+    container_name   = "spotguide-api"
     container_port   = 8000
   }
 

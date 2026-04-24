@@ -267,7 +267,7 @@ export default function ChatScreen() {
             ]}
           >
             <View style={s.headerInner}>
-              <Text style={s.headerTitle}>GoExplore</Text>
+              <Text style={s.headerTitle}>SpotGuide</Text>
               <TouchableOpacity style={s.historyBtn} onPress={openHistory}>
                 <Text style={s.historyBtnText}>☰</Text>
               </TouchableOpacity>

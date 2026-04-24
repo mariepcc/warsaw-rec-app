@@ -3,7 +3,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = { Name = "goexplore-vpc" }
+  tags = { Name = "spotguide-vpc" }
 }
 
 resource "aws_subnet" "public_a" {
@@ -12,7 +12,7 @@ resource "aws_subnet" "public_a" {
   availability_zone       = "eu-north-1a"
   map_public_ip_on_launch = true
 
-  tags = { Name = "goexplore-public-a" }
+  tags = { Name = "spotguide-public-a" }
 }
 
 resource "aws_subnet" "public_b" {
@@ -21,12 +21,12 @@ resource "aws_subnet" "public_b" {
   availability_zone       = "eu-north-1b"
   map_public_ip_on_launch = true
 
-  tags = { Name = "goexplore-public-b" }
+  tags = { Name = "spotguide-public-b" }
 }
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "goexplore-igw" }
+  tags   = { Name = "spotguide-igw" }
 }
 
 resource "aws_route_table" "public" {

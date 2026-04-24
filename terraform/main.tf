@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "goexplore-terraform-state"
+    bucket = "spotguide-terraform-state"
     key    = "prod/terraform.tfstate"
     region = "eu-north-1"
   }
@@ -75,7 +75,7 @@ module "ecs" {
   app_image              = "${module.ecr.repository_url}:latest"
   cognito_user_pool_id   = module.cognito.user_pool_id
   cognito_app_client_id  = module.cognito.app_client_id
-  database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/goexplore"
+  database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/spotguide"
   alb_security_group_id  = module.alb.alb_security_group_id
   target_group_arn       = module.alb.target_group_arn
   alb_https_listener_arn = module.alb.alb_listener_https_arn
