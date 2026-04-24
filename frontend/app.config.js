@@ -10,22 +10,27 @@ export default {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.gumis-bunia.frontend"
+      bundleIdentifier: "com.gumis-bunia.frontend",
     },
     android: {
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",
         backgroundImage: "./assets/images/android-icon-background.png",
-        monochromeImage: "./assets/images/android-icon-monochrome.png"
+        monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "com.gumis_bunia.frontend"
+      package: "com.gumis_bunia.frontend",
+      config: {
+        googleMaps: {
+          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+        },
+      },
     },
     web: {
       output: "static",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
     },
     plugins: [
       "expo-router",
@@ -36,17 +41,19 @@ export default {
           imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#ffffff",
-          dark: { backgroundColor: "#000000" }
-        }
+          dark: { backgroundColor: "#000000" },
+        },
       ],
-      "expo-font"
+      "expo-font",
     ],
     experiments: {
       typedRoutes: true,
-      reactCompiler: true
+      reactCompiler: true,
     },
     extra: {
-      apiUrl: process.env.API_URL
-    }
-  }
-}
+      apiUrl: process.env.API_URL,
+      cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID,
+      cognitoAppClientId: process.env.COGNITO_APP_CLIENT_ID,
+    },
+  },
+};

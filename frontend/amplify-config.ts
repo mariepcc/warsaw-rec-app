@@ -1,10 +1,14 @@
 import type { ResourcesConfig } from "aws-amplify";
+import Constants from "expo-constants";
+
+const { cognitoUserPoolId, cognitoAppClientId } =
+  Constants.expoConfig?.extra ?? {};
 
 const amplifyConfig: ResourcesConfig = {
   Auth: {
     Cognito: {
-      userPoolId: "eu-north-1_vg5paRmeJ",
-      userPoolClientId: "61t6bc8ss4va75bkn2kbf0s453",
+      userPoolId: cognitoUserPoolId,
+      userPoolClientId: cognitoAppClientId,
       loginWith: {
         email: true,
       },

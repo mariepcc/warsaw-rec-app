@@ -62,6 +62,7 @@ resource "aws_ecs_task_definition" "api" {
     }]
 
     environment = [
+      { name = "OPENAI_API_KEY",        value = var.openai_api_key },
       { name = "COGNITO_REGION",        value = "eu-north-1" },
       { name = "COGNITO_USER_POOL_ID",  value = var.cognito_user_pool_id },
       { name = "COGNITO_APP_CLIENT_ID", value = var.cognito_app_client_id },

@@ -13,6 +13,10 @@ variable "app_image" {
   description = "URL obrazu Dockera z ECR — ECS pobiera stąd kontener"
 }
 
+variable "openai_api_key" {
+  type        = string
+}
+
 variable "cognito_user_pool_id" {
   type        = string
   description = "ID Cognito — aplikacja weryfikuje tym tokeny użytkowników"
