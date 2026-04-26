@@ -33,19 +33,33 @@ def get_jwks():
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
+    if credentials.scheme != "Bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization scheme",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
+
+    unauthorized_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         jwks = get_jwks()
         header = jwt.get_unverified_header(token)
+
+        if header.get("alg", "").lower() == "none":
+            raise unauthorized_exception
+
         key = next(
-            (k for k in jwks["keys"] if k["kid"] == header["kid"]),
+            (k for k in jwks["keys"] if k["kid"] == header.get("kid")),
             None,
         )
         if not key:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token key",
-            )
+            raise unauthorized_exception
+
         payload = jwt.decode(
             token,
             key,
@@ -56,8 +70,10 @@ async def get_current_user(
             "user_id": payload["sub"],
             "email": payload.get("email") or payload.get("cognito:username", ""),
         }
+
+    except HTTPException:
+        raise
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
+        raise unauthorized_exception
+    except Exception:
+        raise unauthorized_exception

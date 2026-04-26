@@ -184,7 +184,6 @@ export default function ChatScreen() {
       const response = await sendMessage(text, sessionIdRef.current);
       setSessionId(response.session_id);
       sessionIdRef.current = response.session_id;
-      console.log("type:", response.type);
       setMessages((prev) => [
         {
           id: uuid.v4() as string,
@@ -195,12 +194,22 @@ export default function ChatScreen() {
         },
         ...prev,
       ]);
-    } catch {
+    } catch (error: any) {
+      console.log("Chat error:", error?.code, error?.message);
+
+      let content = "Coś poszło nie tak, spróbuj ponownie.";
+
+      if (error?.code === "ECONNABORTED") {
+        content = "Odpowiedź trwa zbyt długo. Spróbuj ponownie.";
+      } else if (error?.message === "Network Error") {
+        content = "Brak połączenia z internetem.";
+      }
+
       setMessages((prev) => [
         {
           id: uuid.v4() as string,
           role: "assistant",
-          content: "Coś poszło nie tak, spróbuj ponownie.",
+          content,
         },
         ...prev,
       ]);

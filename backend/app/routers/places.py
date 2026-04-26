@@ -27,11 +27,11 @@ async def get_saved_places(
 
 @router.post("/favourites/{place_id}/toggle")
 async def toggle_favourite(
-    place: dict = ToggleFavouriteRequest,
+    place: ToggleFavouriteRequest,
     user: dict = Depends(get_current_user),
 ):
     try:
-        is_fav = places_repo.toggle_favourite(user["user_id"], place)
+        is_fav = places_repo.toggle_favourite(user["user_id"], place.model_dump())
         return {"is_favourite": is_fav}
     except Exception as e:
         logger.error(f"toggle_favourite error: {e}", exc_info=True)

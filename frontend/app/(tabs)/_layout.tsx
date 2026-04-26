@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
-import { useFavouritesStore } from "@/store/FavouritesStore";
+import { useFavouritesStore } from "@/store/favouritesStore";
 import { useEffect } from "react";
 
 export default function AppLayout() {

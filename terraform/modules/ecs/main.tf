@@ -28,7 +28,7 @@ resource "aws_security_group" "ecs" {
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
-    cidr_blocks = [var.alb_security_group_id]
+    security_groups = [var.alb_security_group_id]
   }
 
   egress {
@@ -41,7 +41,7 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/spotguide-api"
-  retention_in_days = 7  # krótkie retention = taniej
+  retention_in_days = 7
 }
 
 resource "aws_ecs_task_definition" "api" {

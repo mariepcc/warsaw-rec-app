@@ -73,6 +73,7 @@ module "ecs" {
   vpc_id                 = module.networking.vpc_id
   subnet_ids             = module.networking.public_subnet_ids
   app_image              = "${module.ecr.repository_url}:latest"
+  openai_api_key         = var.openai_api_key
   cognito_user_pool_id   = module.cognito.user_pool_id
   cognito_app_client_id  = module.cognito.app_client_id
   database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/spotguide"

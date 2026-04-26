@@ -54,6 +54,9 @@ export default {
       apiUrl: process.env.API_URL,
       cognitoUserPoolId: process.env.COGNITO_USER_POOL_ID,
       cognitoAppClientId: process.env.COGNITO_APP_CLIENT_ID,
+      eas: {
+        projectId: "27280772-d1d6-47b0-96c2-547f589069f6",
+      },
     },
   },
 };

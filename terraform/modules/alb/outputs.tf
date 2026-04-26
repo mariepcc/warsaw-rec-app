@@ -1,6 +1,6 @@
 output "alb_dns_name" {
   value       = aws_lb.main.dns_name
-  description = "Adres ALB np. spotguide-alb.eu-north-1.elb.amazonaws.com"
+  description = "Adres ALB np. spotguide-alb.eu-north-1.elb.amazonaws.com - potrzebny dla modułu dns_records"
 }
 
 output "target_group_arn" {
@@ -17,12 +17,7 @@ output "alb_listener_https_arn" {
   value = aws_lb_listener.https.arn
 }
 
-output "alb_dns_name" {
-  description = "DNS name ALB — potrzebny dla modułu dns_records"
-  value       = aws_lb.app.dns_name
-}
-
 output "alb_zone_id" {
   description = "Zone ID ALB — potrzebny dla modułu dns_records"
-  value       = aws_lb.app.zone_id
+  value       = aws_lb.main.zone_id
 }

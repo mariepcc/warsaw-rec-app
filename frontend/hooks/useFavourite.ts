@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { toggleFavourite } from "@/api/places";
-import { useFavouritesStore } from "@/store/FavouritesStore";
+import { useFavouritesStore } from "@/store/favouritesStore";
 import type { Place } from "@/api/places";
 
 export function useFavourite(place: Place) {

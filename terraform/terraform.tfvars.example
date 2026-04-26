@@ -12,6 +12,9 @@ domain_name = "your-domain.com"
 db_username = "your-db-username"
 db_password = "CHANGE_TO_STRONG_PASSWORD"  # min. 16 chars, upper/lower/digits/special
 
+# OpenAI Api key
+openai_api_key = "your-openai_api_key"
+
 # These values appear after first terraform apply (cognito module)
 # cognito_user_pool_id  = "XXXXXXXXXXXXXXXXX"
 # cognito_app_client_id = "XXXXXXXXXXXXXXXXXXXXXXXXXX"

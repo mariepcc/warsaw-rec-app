@@ -1,12 +1,21 @@
 from schemas.places import PlaceResponse
 from typing import Any, List, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+
+    @field_validator("message")
+    @classmethod
+    def message_must_not_be_empty(cls, v: str) -> str:
+        if v is None or not str(v).strip():
+            raise ValueError("Message cannot be empty")
+        if len(v) > 10_000:
+            raise ValueError("Message too long — max 10,000 characters")
+        return v
 
 
 class ChatResponse(BaseModel):

@@ -1,5 +1,6 @@
 import json
 from typing import List
+import uuid
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from schemas.places import SavedPlaceResponse
@@ -168,6 +169,7 @@ class PlacesRepository:
                 return [dict(row) for row in rows]
 
     def toggle_favourite(self, user_id: str, place: dict) -> bool:
+        place_id = place.get("id") or str(uuid.uuid4())
         metadata = {
             "opening_hours": place.get("opening_hours"),
             "lat": place.get("lat"),
@@ -208,7 +210,7 @@ class PlacesRepository:
                     RETURNING is_favourite
                     """,
                     (
-                        place.get("id"),
+                        place_id,
                         user_id,
                         place.get("name"),
                         place.get("address"),

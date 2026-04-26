@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 
 const apiClient = axios.create({
   baseURL: Constants.expoConfig?.extra?.apiUrl,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 apiClient.interceptors.request.use(async (config) => {

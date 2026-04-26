@@ -1,5 +1,5 @@
 import math
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Optional
 from datetime import datetime
 
@@ -48,6 +48,15 @@ class PlaceResponse(BaseModel):
             return None
         return v
 
+    @field_validator("rating", mode="before")
+    @classmethod
+    def validate_rating(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            raise ValueError("rating must be a finite number")
+        return v
+
 
 class SavedPlaceResponse(BaseModel):
     id: str
@@ -92,10 +101,10 @@ class SavedPlaceResponse(BaseModel):
 
 class ToggleFavouriteRequest(BaseModel):
     id: Optional[str] = None
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
     address: Optional[str] = None
     district: Optional[str] = None
-    rating: Optional[float] = None
+    rating: float = Field(..., ge=0, le=5)
     user_rating_count: Optional[int] = None
     price_level: Optional[str] = None
     maps_url: Optional[str] = None
@@ -125,3 +134,16 @@ class ToggleFavouriteRequest(BaseModel):
     reservable: Optional[bool] = None
     price_range_start: Optional[float] = None
     price_range_end: Optional[float] = None
+
+    @field_validator("rating", mode="before")
+    @classmethod
+    def validate_rating(cls, v):
+        if v is None:
+            return v
+        try:
+            val = float(v)
+            if math.isnan(val) or math.isinf(val):
+                raise ValueError("Rating must be a real number")
+        except (TypeError, ValueError):
+            raise ValueError("Invalid numeric value")
+        return val

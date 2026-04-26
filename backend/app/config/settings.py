@@ -22,7 +22,7 @@ class LLMSettings(BaseModel):
     """Base settings for Language Model configurations."""
 
     temperature: float = 0.0
-    max_tokens: Optional[int] = None
+    max_completion_tokens: Optional[int] = 3000
     max_retries: int = 3
 
 
@@ -30,7 +30,7 @@ class OpenAISettings(LLMSettings):
     """OpenAI-specific settings extending LLMSettings."""
 
     api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    default_model: str = Field(default="gpt-5.4-mini ")
+    default_model: str = Field(default="gpt-5.4-mini")
     embedding_model: str = Field(default="text-embedding-3-small")
 
 

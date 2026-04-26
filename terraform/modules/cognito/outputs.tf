@@ -8,7 +8,7 @@ output "user_pool_arn" {
   value       = aws_cognito_user_pool.warsaw_rec.arn
 }
 
-output "client_id" {
+output "app_client_id" {
   description = "Cognito App Client ID"
   value       = aws_cognito_user_pool_client.mobile.id
 }
