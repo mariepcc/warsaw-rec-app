@@ -26,3 +26,11 @@ variable "domain_name" {
 variable "openai_api_key" {
   type      = string
 }
+
+variable "github_username" {
+  type = string
+}
+
+variable "github_repo" {
+  type = string
+}

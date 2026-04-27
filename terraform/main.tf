@@ -81,3 +81,11 @@ module "ecs" {
   target_group_arn       = module.alb.target_group_arn
   alb_https_listener_arn = module.alb.alb_listener_https_arn
 }
+
+module "ga" {
+  source = "./modules/ga"
+
+  app_name        = var.app_name
+  github_username = var.github_username
+  github_repo     = var.github_repo
+}
