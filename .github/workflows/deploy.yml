@@ -58,4 +58,4 @@ jobs:
             --cluster ${{ env.ECS_CLUSTER }} \
             --services ${{ env.ECS_SERVICE }} \
             --region ${{ env.AWS_REGION }}
-          echo "Deployment successful"
+          echo "Deployment successful!"
