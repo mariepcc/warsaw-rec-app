@@ -50,6 +50,7 @@ resource "aws_lb_target_group" "api" {
     interval            = 30
     matcher             = "200"
   }
+  deregistration_delay = 30
 }
 
 resource "aws_lb_listener" "http" {
