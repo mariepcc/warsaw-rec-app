@@ -8,8 +8,6 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
-print(os.getenv("OPENAI_API_KEY"))
-
 
 def setup_logging():
     """Configure basic logging for the application."""
