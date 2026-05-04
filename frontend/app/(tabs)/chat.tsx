@@ -104,7 +104,7 @@ export default function ChatScreen() {
     setLoadingMsgIndex(0);
     const interval = setInterval(() => {
       setLoadingMsgIndex((i) => (i + 1) % 4);
-    }, 2000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [loading]);
 
