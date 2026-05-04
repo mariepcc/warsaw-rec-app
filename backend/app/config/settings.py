@@ -2,7 +2,6 @@ import logging
 import os
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
@@ -20,7 +19,7 @@ class LLMSettings(BaseModel):
     """Base settings for Language Model configurations."""
 
     temperature: float = 0.0
-    max_completion_tokens: Optional[int] = 3000
+    max_completion_tokens: int = 500
     max_retries: int = 3
 
 
@@ -35,7 +34,7 @@ class OpenAISettings(LLMSettings):
 class DatabaseSettings(BaseModel):
     """Database connection settings."""
 
-    service_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL"))
+    service_url: str = Field(default_factory=lambda: os.getenv("DATABASE_URL_PROD"))
 
 
 class VectorStoreSettings(BaseModel):

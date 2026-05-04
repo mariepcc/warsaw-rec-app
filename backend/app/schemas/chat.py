@@ -51,9 +51,6 @@ class ChatMessage(BaseModel):
 
 
 class SynthesizedResponse(BaseModel):
-    thought_process: List[str] = Field(
-        description="Myśli asystenta podczas syntezowania odpowiedzi"
-    )
     answer: str = Field(description="Odpowiedź dla użytkownika")
     type: Optional[Literal["rag", "followup", "hybrid"]] = Field(
         description="Typ wiadomości: nowe zapytanie, followup, lub hybrid"

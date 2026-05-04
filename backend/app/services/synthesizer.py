@@ -25,33 +25,11 @@ class Synthesizer:
     Zaproponuj konkretny następny krok. Nie pytaj ogólnie "czy mogę pomóc" — zaproponuj coś sensownego:
     zawężenie do dzielnicy, filtr po cenie, wybranie jednego najlepszego, porównanie dwóch, sprawdzenie godzin otwarcia itp.
 
-    STYL:
-    - Nazwy miejsc pogrubiaj: **NazwaMiejsca**
-    - Płynna narracja, zero list i myślników
-    - Język rozmówcy (polski lub angielski)
-    - Pisz w pierwszej osobie, jakbyś sam/a tam bywał/a
+    STYL: Pogrubiaj **NazwaMiejsca**. Płynna narracja, zero list. Pierwsza osoba.
+    Rekomenduj WYŁĄCZNIE miejsca z KONTEKSTU. Podaj dokładnie tyle ile wynosi LICZBA REKOMENDACJI.
 
-    ━━━ KIEDY BRAK WYNIKÓW ━━━
-
-    Jeśli kontekst to "Brak wyników wyszukiwania." — NIE mów że "nie masz informacji" ani że "baza jest pusta".
-    Zamiast tego napisz krótko że nic nie pasowało i daj 2-3 konkretne wskazówki jak zreformułować pytanie.
-
-    FORMAT przy braku wyników:
-
-    [1] Przyznaj szczerze w 1 zdaniu że nic nie znalazłeś na to zapytanie.
-
-    [2] Zaproponuj 2-3 konkretne alternatywy, np.:
-    - zmiana dzielnicy ("może bez ograniczenia do Mokotowa?")
-    - rozluźnienie filtru ("może niekoniecznie wegańskie, ale z opcjami roślinnymi?")
-    - inny typ miejsca ("może bar zamiast klubu?")
-    - inna pora ("szukasz na teraz czy na wieczór — mogę sprawdzić godziny")
-
-    [3] Zachęć do doprecyzowania w 1 zdaniu — konkretnie, nie ogólnie.
-
-    Przykład dobrej odpowiedzi przy braku wyników:
-    "Nic mi nie wyskoczyło na 'tanie omakase na Pradze' — to dość specyficzne połączenie.
-    Możesz spróbować bez ograniczenia do Pragi, albo powiedzieć mi czy chodzi Ci bardziej
-    o klimat japonski czy o cenę — wtedy znajdę coś bliżej."
+    KIEDY BRAK WYNIKÓW:
+    Przyznaj w 1 zdaniu, zaproponuj 2-3 alternatywy, zachęć do doprecyzowania.
 
     ━━━ PRZYKŁAD PEŁNEJ DOBREJ ODPOWIEDZI ━━━
 
@@ -72,19 +50,8 @@ class Synthesizer:
     """
 
     FOLLOWUP_INSTRUCTION = """━━━ TO JEST PYTANIE UZUPEŁNIAJĄCE ━━━
-
-    Użytkownik pyta o miejsca które już zostały polecone — nie rekomenduj nowych.
-    Odpowiedz konkretnie na pytanie na podstawie KONTEKSTU i HISTORII ROZMOWY.
-
-    FORMAT:
-    - Odpowiedz bezpośrednio na pytanie, bez intro o "znalezionych miejscach"
-    - Możesz porównywać, wskazać jedno najlepsze, wyjaśnić różnice
-    - Jeśli pytanie dotyczy szczegółów (godziny, ceny, menu) — podaj je z kontekstu
-    - 2-4 zdania max, chyba że pytanie wymaga więcej
-    
-    WAŻNE: W polu recommended_place_names podaj nazwy miejsc których dotyczy pytanie
-    (jedno konkretne jeśli user pyta o jedno, wszystkie jeśli porównuje lub pyta ogólnie).
-    Dzięki temu karty tych miejsc pozostaną widoczne pod odpowiedzią.
+    Odpowiedz konkretnie na podstawie KONTEKSTU i HISTORII. Nie rekomenduj nowych miejsc.
+    2-4 zdania. W recommended_place_names podaj nazwy miejsc których dotyczy pytanie.
     """
 
     @staticmethod
@@ -131,7 +98,7 @@ class Synthesizer:
         if not chat_history:
             return "Brak historii — to pierwsza wiadomość."
         return "\n".join(
-            f"{msg.role.upper()}: {msg.content}" for msg in chat_history[-8:]
+            f"{msg.role.upper()}: {msg.content}" for msg in chat_history[-5:]
         )
 
     @staticmethod
