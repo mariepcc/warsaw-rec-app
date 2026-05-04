@@ -19,7 +19,7 @@ class LLMSettings(BaseModel):
     """Base settings for Language Model configurations."""
 
     temperature: float = 0.0
-    max_completion_tokens: int = 500
+    max_completion_tokens: int = 4000
     max_retries: int = 3
 
 

@@ -47,6 +47,8 @@ class Synthesizer:
     3. Nigdy osobnego akapitu na każde miejsce — zawsze zbiorczo.
     4. Nigdy listy ani myślników w głównej odpowiedzi.
     5. W polu recommended_place_names podaj nazwy wszystkich polecanych miejsc.
+    6. Jeśli pytanie dotyczy szczegółów których nie ma w kontekście, odpowiedz krótko
+    że dokładne informacje (godziny, ceny, menu) znajdzie klikając w kartę miejsca.
     """
 
     FOLLOWUP_INSTRUCTION = """━━━ TO JEST PYTANIE UZUPEŁNIAJĄCE ━━━
@@ -112,7 +114,6 @@ class Synthesizer:
             "price_level",
             "price_range_start",
             "price_range_end",
-            "opening_hours",
             "main_category",
             "sub_category",
             "outdoor_seating",
@@ -130,10 +131,6 @@ class Synthesizer:
             "menu_for_children",
             "reservable",
             "takeout",
-            "maps_url",
-            "website",
-            "menu_url",
-            "editorial_summary",
         ]
         available = [c for c in columns if c in context.columns]
         return context[available].to_json(orient="records", indent=2, force_ascii=False)
