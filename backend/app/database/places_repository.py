@@ -1,6 +1,6 @@
 import json
 from typing import List
-import uuid
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from schemas.places import SavedPlaceResponse
@@ -169,7 +169,11 @@ class PlacesRepository:
                 return [dict(row) for row in rows]
 
     def toggle_favourite(self, user_id: str, place: dict) -> bool:
-        place_id = place.get("id") or str(uuid.uuid4())
+        place_id = place.get("id")
+        if not place_id:
+            raise ValueError(
+                f"Place must have a Google Place ID, got: {place.get('place_id')}"
+            )
         metadata = {
             "opening_hours": place.get("opening_hours"),
             "lat": place.get("lat"),
@@ -205,7 +209,7 @@ class PlacesRepository:
                         is_favourite, metadata
                     )
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, true, %s)
-                    ON CONFLICT (user_id, name) DO UPDATE
+                    ON CONFLICT (id, user_id) DO UPDATE
                         SET is_favourite = NOT saved_places.is_favourite
                     RETURNING is_favourite
                     """,
