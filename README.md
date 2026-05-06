@@ -1,50 +1,135 @@
-# Warsaw Places RAG Chatbot
+# SpotGuide 
 
-A **Retrieval-Augmented Generation (RAG)** chatbot for recommending places in **Warsaw**, combining semantic vector search with large language model–based response generation.
+An AI-powered mobile app for discovering the best places in Warsaw. Ask in natural language and get personalized recommendations for restaurants, cafes, culture, and nightlife.
 
-The project demonstrates how embeddings stored in **PostgreSQL (TimescaleDB + pgvector)** can be used to retrieve relevant places and generate context-aware recommendations.
+---
 
-**All example queries and results are presented in the Jupyter notebook.**
+## Demo
+
+> *Coming soon*
 
 ---
 
 ## Features
 
-- Semantic place search using vector embeddings
-- PostgreSQL / TimescaleDB with `pgvector`
-- Metadata-based filtering with predicates (rating, popularity, district)
-- Natural language response synthesis using an LLM
-- Detection of irrelevant or insufficient context
-- End-to-end RAG pipeline demonstrated in a notebook
-
----
-
-## Architecture
-
-- **VectorStore**
-  - Handles embedding creation and vector similarity search in PostgreSQL
-- **Synthesizer**
-  - Generates natural language answers based on retrieved context
-  - Handles irrelevant questions gracefully
-- **Data Source**
-  - Google Places API (reviews, ratings, categories, metadata)
-
----
-
-## How to Run
-
-1. Install project dependencies mentioned in `requirements.txt`,
-2. Configure environment variables (`OPENAI_API_KEY`, database credentials)
-3. Open and run the Jupyter notebook to explore the examples
+- **AI Chat** — ask anything in natural language, get curated place recommendations
+- **Interactive Map** — explore venues by category with smart clustering
+- **Favourites** — save places and filter by category, price, and district
+- **Semantic Search** — finds places based on vibe, not just keywords
+- **Secure Auth** — JWT-based authentication via AWS Cognito
 
 ---
 
 ## Tech Stack
 
-- Python
-- PostgreSQL / TimescaleDB
-- pgvector
-- Docker
-- OpenAI API (embeddings and chat)
-- Pandas
-- Jupyter Notebook
+| Layer | Technology |
+|---|---|
+| Mobile | React Native, Expo, TypeScript |
+| Backend | FastAPI, Python |
+| AI | OpenAI GPT-4o, instructor, RAG pipeline |
+| Auth | AWS Cognito |
+| Database | PostgreSQL, TimescaleDB, pgvector |
+| Infrastructure | AWS ECS Fargate, Terraform |
+
+---
+
+## How It Works
+
+The app uses a **RAG (Retrieval-Augmented Generation)** pipeline:
+
+1. User sends a message in natural language
+2. Message is **classified** — new query, follow-up, or hybrid
+3. **Metadata is extracted** — district, price range, opening hours, category
+4. Query is **expanded** using HyDE (Hypothetical Document Embeddings)
+5. **Vector search** finds matching venues with metadata filters
+6. LLM **synthesizes** results into a conversational response
+
+---
+
+## Project Structure
+
+```
+├── frontend/
+│   ├── app/            # Expo Router screens
+│   ├── components/     # UI components
+│   ├── api/            # API client (Axios)
+│   └── store/          # Zustand state management
+│
+└── backend/
+    ├── routers/        # API endpoints
+    ├── services/       # Chat service, RAG pipeline, LLM
+    ├── database/       # Repositories, vector store
+    └── schemas/        # Pydantic models
+```
+
+---
+
+## Getting Started
+
+### Requirements
+
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL with pgvector
+- AWS account (Cognito)
+- OpenAI API key
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in your values
+uvicorn main:app --reload
+```
+
+### Mobile
+
+```bash
+cd mobile
+npm install
+cp .env.example .env   # fill in your values
+npx expo start
+```
+
+---
+
+## Environment Variables
+
+```bash
+# backend/.env
+COGNITO_REGION=eu-north-1
+COGNITO_USER_POOL_ID=
+COGNITO_APP_CLIENT_ID=
+DATABASE_URL=postgresql://user:password@localhost:5432/spotguide
+OPENAI_API_KEY=
+```
+
+---
+
+## Security
+
+- RS256 JWT validation with JWKS key rotation
+- Per-user data isolation on all endpoints
+- Input validation via Pydantic on all requests
+- Tested against [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+
+---
+
+## Infrastructure
+
+Deployed on AWS using Terraform:
+
+- **ECS Fargate** — containerized backend, no server management
+- **RDS PostgreSQL** — managed database
+- **ECR** — Docker image registry
+- **ALB** — HTTPS load balancer with SSL via ACM
+- **Route 53** — DNS management
+
+---
+
+## License
+
+MIT
