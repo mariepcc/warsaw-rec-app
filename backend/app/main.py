@@ -1,9 +1,11 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import chat, sessions, places
 from config.settings import get_settings
 
 settings = get_settings()
+ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 
 app = FastAPI(
     title="Warsaw Spot Guide API",
@@ -16,6 +18,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
+    docs_url=None if ENVIRONMENT == "prod" else "/docs",
+    redoc_url=None if ENVIRONMENT == "prod" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "prod" else "/openapi.json",
 )
 
 
@@ -25,6 +30,9 @@ async def add_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["server"] = "Spot-Guide"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
     return response
 
 

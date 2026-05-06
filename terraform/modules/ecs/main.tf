@@ -15,6 +15,36 @@ resource "aws_iam_role" "ecs_execution" {
   })
 }
 
+resource "aws_iam_role" "ecs_task" {
+  name = "spotguide-ecs-task-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_exec" {
+  name = "spotguide-ecs-exec-policy"
+  role = aws_iam_role.ecs_task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_execution" {
   role       = aws_iam_role.ecs_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -51,6 +81,7 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name  = "spotguide-api"
@@ -66,7 +97,8 @@ resource "aws_ecs_task_definition" "api" {
       { name = "COGNITO_REGION",        value = "eu-north-1" },
       { name = "COGNITO_USER_POOL_ID",  value = var.cognito_user_pool_id },
       { name = "COGNITO_APP_CLIENT_ID", value = var.cognito_app_client_id },
-      { name = "DATABASE_URL",          value = var.database_url }
+      { name = "DATABASE_URL",          value = var.database_url },
+      { name = "ENVIRONMENT",           value = "prod" }
     ]
 
     logConfiguration = {

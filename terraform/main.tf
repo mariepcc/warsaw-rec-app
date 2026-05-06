@@ -76,7 +76,7 @@ module "ecs" {
   openai_api_key         = var.openai_api_key
   cognito_user_pool_id   = module.cognito.user_pool_id
   cognito_app_client_id  = module.cognito.app_client_id
-  database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/spotguide"
+  database_url           = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_endpoint}/warsaw_places"
   alb_security_group_id  = module.alb.alb_security_group_id
   target_group_arn       = module.alb.target_group_arn
   alb_https_listener_arn = module.alb.alb_listener_https_arn
