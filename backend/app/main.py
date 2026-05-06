@@ -10,6 +10,9 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 app = FastAPI(
     title="Warsaw Spot Guide API",
     version="1.0.0",
+    docs_url=None if ENVIRONMENT == "prod" else "/docs",
+    redoc_url=None if ENVIRONMENT == "prod" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "prod" else "/openapi.json",
 )
 
 app.add_middleware(
@@ -18,9 +21,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
-    docs_url=None if ENVIRONMENT == "prod" else "/docs",
-    redoc_url=None if ENVIRONMENT == "prod" else "/redoc",
-    openapi_url=None if ENVIRONMENT == "prod" else "/openapi.json",
 )
 
 
